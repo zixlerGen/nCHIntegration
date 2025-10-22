@@ -1,0 +1,125 @@
+﻿@model Tuple<List<nCHIntegration.Models.CRA_MDT_Appointment>, 
+    List<nCHIntegration.Models.CRA_MDT_Consult>>
+
+
+@{
+    ViewData["Title"] = "MDT Report";
+    var appointments = Model?.Item1 ?? new List<nCHIntegration.Models.CRA_MDT_Appointment>();
+    var mdtConsult = Model?.Item2 ?? new List<nCHIntegration.Models.CRA_MDT_Consult>();
+    var grouped = appointments.GroupBy(x => x.MDT_Group).ToList();
+    int rowsPerPage = 20; // ปรับตามความสูง row และขนาด A4
+
+    // Prepare a flat list of all items, but keep group info
+    var allItems = new List<(string GroupKey, nCHIntegration.Models.CRA_MDT_Appointment Item)>();
+    foreach (var group in grouped)
+    {
+        foreach (var item in group)
+        {
+            allItems.Add((group.Key, item));
+        }
+    }
+
+    int totalRows = allItems.Count;
+    int pageCount = (int)Math.Ceiling(totalRows / (double)rowsPerPage);
+}
+
+<style>
+    .mdt-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+        .mdt-table th, .mdt-table td {
+            width: 10%;
+            text-align: left;
+            vertical-align: middle;
+            word-wrap: break-word;
+            padding: 0 2px; /* ลด padding ให้แคบลง */
+            height: 28px; /* ปรับความสูง row ให้แคบลง */
+            font-size: 14px; /* ลดขนาดตัวอักษร */
+        }
+</style>
+
+<h6>Date: @(appointments.FirstOrDefault()?.Appoint_Datetime.ToString("dd/MM/yyyy") ?? "-") Case Tumor Board
+    @(mdtConsult.FirstOrDefault()?.Doctor_Consult.ToString() ?? "-")
+</h6>
+@{
+    int itemIndex = 0;
+    string lastGroup = null;
+    for (int page = 0; page < pageCount; page++)
+    {
+        var pageItems = allItems.Skip(page * rowsPerPage).Take(rowsPerPage).ToList();
+        int idx = page * rowsPerPage + 1;
+        <table class="table table-bordered mdt-table" style="page-break-after: always;">
+            <thead>
+                <tr>
+                    <th style="width:2%; text-align:center;">No.</th>
+                    <th style="width:7%; text-align:center;">Dr.</th>
+                    <th style="width:5%; text-align:center;">HN</th>
+                    <th style="text-align:center;">Name</th>
+                    <th style="width:2%; text-align:center;">Age</th>
+                    <th style="text-align:center;">Dx.</th>
+                    <th style="width:4%; text-align:center;">CTB</th>
+                    <th style="width:3%; text-align:center;">Visit</th>
+                    <th style="width:6%; text-align:center;">Right</th>
+                    <th style="width:15%; text-align:center;">Doctor/Specialty</th>
+                    <th style="text-align:center;">Review Image</th>
+                    <th style="width:3%; text-align:center;">App.</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = 0; i < pageItems.Count; i++)
+                {
+                    var groupKey = pageItems[i].GroupKey;
+                    var item = pageItems[i].Item;
+                    var today = DateTime.Today;
+                    var age = today.Year - item.Birth_Datetime.Year;
+                    if (item.Birth_Datetime.Date > today.AddYears(-age)) age--;
+
+                    // Show group header if group changed or first row in page
+                    if (lastGroup != groupKey)
+                    {
+                        <tr>
+                            <td colspan="12" style="text-align:left; font-weight:bold; background:#f5f5f5;">
+                                Group: @groupKey
+                            </td>
+                        </tr>
+                        lastGroup = groupKey;
+                    }
+                    <tr>
+                        <td style="text-align:center;">@(page* rowsPerPage + i + 1)</td>
+                        <td>
+                            @{
+                                var doctorName = item.Doctor_Name ?? "";
+                                var displayDoctorName = doctorName.Length > 12 ? doctorName.Substring(0, 12) : doctorName;
+                            }
+                            <span title="@doctorName">@displayDoctorName</span>
+                        </td>
+                        <td style="text-align:center;">@item.HN</td>
+                        <td>@item.Initial_Name @item.First_Name @item.Last_Name</td>
+                        <td style="text-align:center;">@age</td>
+                        <td>
+                            @{
+                                var diagnosticName = item.Diagnostic_Name ?? "";
+                                var displayDiagnosticName = diagnosticName.Length > 20 ? diagnosticName.Substring(0, 20) + "…" : diagnosticName;
+                            }
+                            <span title="@diagnosticName">@displayDiagnosticName</span>
+                        </td>
+                        <td style="text-align:center;">@item.CTB_No</td>
+                        <td>@item.MDT_Visit</td>                    
+                        <td>
+                            @{
+                                var rightName = item.Right_Name ?? "";
+                                var displayRightName = rightName.Length > 12 ? rightName.Substring(0, 12) : rightName;
+                            }
+                            <span title="@rightName">@displayRightName</span>
+                        </td>
+                        <td>@item.MDT_Consult</td>
+                        <td>@item.MDT_Review_Image</td>
+                        <td style="text-align:center;">@item.MDT_Appointment</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}

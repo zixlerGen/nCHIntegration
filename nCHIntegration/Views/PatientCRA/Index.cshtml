@@ -1,0 +1,379 @@
+﻿@model Tuple<List<nCHIntegration.Models.CRA_MDT_Appointment>, List<nCHIntegration.Models.CRA_Patient_Right>, List<nCHIntegration.Models.CRA_MDT_Group>>
+@{
+    ViewData["Title"] = "CRA Patient";
+    var appointments = Model?.Item1 ?? new List<nCHIntegration.Models.CRA_MDT_Appointment>();
+    var patientRights = Model?.Item2 ?? new List<nCHIntegration.Models.CRA_Patient_Right>();
+    var mdtGroup = Model?.Item3 ?? new List<nCHIntegration.Models.CRA_MDT_Group>();
+}
+
+<style>
+    .logo-container {
+        display: flex;
+        justify-content: center; /* Centers horizontally */
+        align-items: center; /* Centers vertically */
+        height: 100px; /* Optional: Adjust height as needed */
+    }
+
+    .logo {
+        max-width: 100%; /* Ensures the image scales responsively */
+        height: auto; /* Maintains the aspect ratio */
+        width: 100px; /* Adjust the width as needed */
+    }
+</style>
+
+<form method="post">
+   @*  <img src="/images/AW_ChulabhornH_VerticalLogo_TH.png" alt="Logo" class="logo d-block mx-auto" /> *@
+    <br />
+    <div class="mb-3 d-flex align-items-center">
+        <label for="searchInput" class="form-label me-2">Search by MDT Date</label>
+        <input type="date" id="mdtDate" name="mdtDate" class="form-control me-2" style="max-width: 250px;" placeholder="Select MDT Date" />
+        <button type="submit" class="btn btn-primary" asp-controller="PatientCRA" asp-action="Index">Search</button>
+    </div>
+</form>
+
+@if (appointments == null || appointments.Count == 0)
+{
+    <div class="d-flex justify-content-center align-items-center vh-10">
+        <p class="text-danger text-center">No patient data found. Please try searching with a different Date.</p>
+    </div>
+}
+else
+{
+    <h2></h2>
+    <h1 class="text-decoration-underline">Case Tumor Board</h1>
+    <input type="text" id="consult" name="consult" class="form-control" placeholder="Enter Doctor Name" />
+    <h2></h2>
+    <form id="navifyForm" method="post" asp-controller="PatientCRA" asp-action="GenerateNavifyFile">
+        <div class="container">
+            <table class="table table-bordered" style="font-size: smaller;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center">
+                            <input type="checkbox" id="selectAll" class="form-check-input" />
+                        </th>
+                        <th class="text-center">No.</th>
+                        <th class="text-center">Doctor</th>
+                        <th class="text-center">HN</th>
+                        <th class="text-center">Name</th>
+                        <th class="text-center">Age</th>
+                        <th class="text-center">Dx.</th>
+                        <th class="text-center">Group</th>
+                        <th class="text-center">CTB</th>
+                        <th class="text-center">Visit</th>
+                        <th class="text-center">Right</th>
+                        <th class="text-center">แพทย์/Specialty ที่ต้องการปรึกษา</th>
+                        <th class="text-center">Review Image</th>
+                        <th class="text-center">App.</th>
+                        <th class="text-center">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        var rowNumber = 1;
+                    }
+                    @for (int i = 0; i < appointments.Count; i++)
+                    {
+                        var item = appointments[i];
+                        var modalId = $"editModal_{i}";
+                        var formId = $"confirmOrEditForm_{i}";
+                        <tr>
+                            <td class="text-center">
+                                <input type="checkbox" class="form-check-input row-checkbox"
+                                       name="selectedItems"
+                                       value="@item.HN"
+                                       data-mdt-date="@item.Appoint_Datetime.ToString("yyyy-MM-dd")" />
+                            </td>
+                            <th class="text-center">@rowNumber</th>
+                            <th class="text-center">@item.Doctor_Name</th>
+                            <th class="text-center">@item.HN</th>
+                            <th class="text-center">@item.Initial_Name @item.First_Name @item.Last_Name</th>
+                            <th class="text-center">
+                                @{
+                                    var today = DateTime.Today;
+                                    var age = today.Year - item.Birth_Datetime.Year;
+                                    if (item.Birth_Datetime.Date > today.AddYears(-age)) age--;
+                                }
+                                @age
+                            </th>
+                            <th class="text-center">Null</th>
+                            <th class="text-center">@item.MDT_Group</th>
+                            <th class="text-center">@item.CTB_No</th>
+                            <th class="text-center">@item.MDT_Visit</th>
+                            <th class="text-center">@item.Right_Name</th>
+                            <th class="text-center">@item.MDT_Consult</th>
+                            <th class="text-center">@item.MDT_Review_Image</th>
+                            <th class="text-center">@item.MDT_Appointment</th>
+                            <th class="text-center" title="@item.Remarks_Memo">
+                                <button type="button" class="btn btn-sm btn-secondary ms-2" data-bs-toggle="modal" data-bs-target="#@modalId">Detials</button>
+                                @if (item.confirm_status)
+                                {
+                                    <span class="badge bg-success">Send to nCH</span>
+                                }
+                            </th>
+                        </tr>
+
+                        rowNumber++;
+                    }
+                </tbody>
+            </table>
+        </div>
+        @for (int i = 0; i < appointments.Count; i++)
+        {
+            var item = appointments[i];
+            var modalId = $"editModal_{i}";
+            var formId = $"confirmOrEditForm_{i}";
+            <div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="@($"{modalId}_Label")" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        @* <form id="@formId" method="post" asp-controller="PatientCRA" asp-action="ConfirmOrEdit"> *@
+                        <form id="@formId" onsubmit="return false;" method="post">
+                            @Html.AntiForgeryToken()
+                            <!-- ...modal content as before... -->
+
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="@($"{modalId}_Label")">Edit/Confirm Patient Data</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" name="MDTDate" value="@item.Appoint_Datetime" />
+                                <div class="mb-3 d-flex align-items-center">
+                                    <label class="form-label me-2" style="min-width: 40px;">HN</label>
+                                    <input type="text" class="form-control me-3" name="HN" value="@item.HN" readonly style="max-width: 120px;" />
+                                    <label class="form-label me-2" style="min-width: 60px;">Name</label>
+                                    <input type="text" class="form-control me-3" name="FullName" value="@($"{item.Initial_Name} {item.First_Name} {item.Last_Name}")" readonly style="max-width: 280px;" />
+                                    <label class="form-label me-2" style="min-width: 60px;">CTB No</label>
+                                    <input type="text" class="form-control me-3" name="CTB_No" value="@item.CTB_No" style="max-width: 100px;" />
+                                    <label class="form-label me-2" style="min-width: 40px;">Visit</label>
+                                    <input type="text" class="form-control me-3" name="MDT_Visit" value="@item.MDT_Visit" style="max-width: 50px;" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Diagnostics</label>
+                                    <input type="text" class="form-control" name="diagnostics" value="@item.diagnostic_name" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Remarks Memo</label>
+                                    <textarea class="form-control" name="Remarks_Memo" rows="2">@item.Remarks_Memo</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Patient Rights</label>
+                                    <select class="form-select" name="Patient_Rights">
+                                        @foreach (var right in patientRights)
+                                        {
+                                            <option value="@right.Right_Name" selected="@(item.Right_Code == right.Right_Code ? "selected" : null)">
+                                                @right.Right_Name
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Doctor</label>
+                                    <input type="text" class="form-control" name="Doctor_Name" value="@item.Doctor_Name" readonly />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">MDT Group</label>
+                                    <select class="form-select" name="MDT_Group">
+                                        @foreach (var group in mdtGroup)
+                                        {
+                                            <option value="@group.MDTGroup_Name" selected="@(item.MDT_Group == group.MDTGroup_Name ? "selected" : null)">
+                                                @group.MDTGroup_Name
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">แพทย์/Specialty ที่ต้องการปรึกษา</label>
+                                    <input type="text" class="form-control" name="consult" value="@item.MDT_Consult" />
+                                </div>
+                                <div class="mb-3 d-flex align-items-center">
+                                    <label class="form-label me-2 mb-0">Review Image</label>
+                                    <input type="text" class="form-control me-3" name="reviewimage" value="@item.MDT_Review_Image" style="max-width: 440px;" />
+                                    <label class="form-label me-2 mb-0">Appointment</label>
+                                    <input type="text" class="form-control" name="appointment" value="@item.MDT_Appointment" style="max-width: 100px;" />
+                                </div>
+                            </div>
+                            <div class="modal-footer d-flex justify-content-between">
+                                <button type="button" class="btn btn-danger me-auto sendToNchBtn">Send to nCH</button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary saveBtn">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+        <button type="button" id="submitToNavify" class="btn btn-danger">Submit To navify</button>
+
+    </form>
+}
+<div id="messageAlert" class="alert alert-success alert-dismissible fade" role="alert" style="display: none;">
+    <span id="alertMessage"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Disable default form submissions
+            $('form[id^="confirmOrEditForm_"]').on('submit', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            function handleButtonClick(button, isSendToNch) {
+                var form = button.closest('form');
+                var formData = new FormData(form[0]);
+                formData.append('isSendToNch', isSendToNch);
+
+                $.ajax({
+                    url: '@Url.Action("ConfirmOrEdit", "PatientCRA")',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            $(form).closest('.modal').modal('hide');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (response.message || 'Unknown error occurred'));
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Error: ' + error);
+                    }
+                });
+            }
+
+            // Handle Save button click
+            $('.saveBtn').click(function(e) {
+                e.preventDefault();
+                handleButtonClick($(this), false);
+            });
+
+            // Handle Send to nCH button click
+            $('.sendToNchBtn').click(function(e) {
+                e.preventDefault();
+                handleButtonClick($(this), true);
+            });
+        });
+    </script>
+
+    <script>
+                $(document).ready(function () {
+                    // Existing code...
+
+                    // Select All checkbox functionality
+                    $('#selectAll').change(function() {
+                        var isChecked = $(this).prop('checked');
+                        $('.row-checkbox').prop('checked', isChecked);
+                    });
+
+                    // Update Select All checkbox state when individual checkboxes change
+                    $('.row-checkbox').change(function() {
+                        var allChecked = $('.row-checkbox:not(:checked)').length === 0;
+                        $('#selectAll').prop('checked', allChecked);
+                    });
+
+                    // Your existing script code...
+                });
+
+
+                        $(document).ready(function () {
+                    // Your existing script code...
+
+                    $('#submitToNavify').click(function(e) {
+                        e.preventDefault();
+
+                        var selectedHNs = [];
+                        $('.row-checkbox:checked').each(function() {
+                            selectedHNs.push({
+                                hn: $(this).val(),
+                                mdtDate: $(this).data('mdt-date')
+                            });
+                        });
+
+                        if (selectedHNs.length === 0) {
+                            showMessage('Please select at least one patient.', 'danger');
+                            return;
+                        }
+
+                        $.ajax({
+                            url: '@Url.Action("GenerateNavifyFile", "PatientCRA")',
+                            type: 'POST',
+                            data: JSON.stringify({ selectedPatients: selectedHNs }),
+                            contentType: 'application/json',
+                            success: function(response) {
+                                if (response.success) {
+                                    showMessage('Send to navify successfully.', 'success');
+                                            if (response.mdtDate) {
+                                    refreshAppointments(response.mdtDate);
+                                } else {
+                                    // Fallback if mdtDate is not returned (e.g., refresh with the original date from the form)
+                                    refreshAppointments(mdtDateInput);
+                                }
+                                } else {
+                                    showMessage('Error: ' + response.message, 'danger');
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                showMessage('Error generating file: ' + error, 'danger');
+                            }
+                        });
+                    });
+
+                            function showMessage(message, type) {
+                    $('#messageAlert')
+                        .removeClass('alert-success alert-danger')
+                        .addClass('alert-' + type)
+                        .addClass('show') // <--- Add this line
+                        .show();
+                    $('#alertMessage').text(message);
+
+                    // Auto hide after 5 seconds
+                    setTimeout(function() {
+                        $('#messageAlert').fadeOut(function() {
+                            $(this).removeClass('show'); // Remove 'show' class after fading out
+                        });
+                    }, 5000);
+                }
+                });
+
+                // Function to fetch and render appointments for a given date
+        function refreshAppointments(mdtDate) {
+            $.ajax({
+                url: '@Url.Action("GetMDTAppointmentsFromSqlServer", "PatientCRA")', // Correct URL for your GET endpoint
+                type: 'GET',
+                data: { mdtDate: mdtDate }, // Pass the date parameter
+                success: function (data) {
+                    // Assuming 'data' is a List<CRA_MDT_Appointment>
+                    // You'll need to implement logic to re-render your table/list of appointments
+                    // This is a placeholder; adjust based on your actual HTML structure
+                    var tableBody = $('#mdtAppointmentsTable tbody'); // Assuming your table has id="mdtAppointmentsTable"
+                    tableBody.empty(); // Clear existing rows
+
+                    $.each(data, function (index, appointment) {
+                        // Append new rows based on the received data
+                        // This is where you reconstruct your table row for each appointment
+                        var row = '<tr>' +
+                            '<td>' + appointment.hn + '</td>' +
+                            '<td>' + new Date(appointment.appoint_Datetime).toLocaleDateString() + '</td>' +
+                            '<td>' + appointment.firstName + ' ' + appointment.lastName + '</td>' +
+                            // ... other columns
+                            '<td>' + (appointment.confirm_status ? 'Confirmed' : 'Pending') + '</td>' +
+                            '</tr>';
+                        tableBody.append(row);
+                    });
+
+                    console.log("Appointments refreshed successfully!");
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error refreshing appointments:", error);
+                    alert("Error refreshing appointments: " + error);
+                }
+            });
+        }
+    </script>
+}

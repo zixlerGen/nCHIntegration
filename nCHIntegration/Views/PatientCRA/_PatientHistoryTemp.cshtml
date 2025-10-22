@@ -1,0 +1,160 @@
+﻿@model nCHIntegration.Models.CRA_Temp_Patient_History
+
+<div class="card shadow-lg border-0 mb-4">
+    @* ใช้ shadow-lg เพื่อเพิ่มมิติเล็กน้อย *@
+
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-file-earmark-medical me-2"></i> Patient History Preparation
+        </h5>
+        <div class="text-end">
+            <span class="d-block">
+                HN: <strong class="ms-1">@Model.HN</strong>
+                | MDT Date: <strong class="ms-1">@Model.MDT_Date?.ToString("yyyy-MM-dd")</strong>
+                | MDT: <strong class="ms-1">@Model.MDT_Name</strong>
+            </span>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="mb-4">
+            <label for="tempPatientHistoryTextarea" class="form-label h6 text-primary">History Details (Editable):</label>
+            <textarea id="tempPatientHistoryTextarea"
+                      class="form-control"
+                      rows="15"
+                      style="font-family: monospace; font-size: 0.9rem; resize: vertical; border: 1px solid #ced4da;">@Model.patient_history</textarea>
+        </div>
+
+        <div class="row mb-4 pt-3 border-top">
+            <div class="col-md-6">
+                <p class="card-text mb-1">
+                    <small class="text-muted d-block">Last Updated By:</small>
+                    <span class="fw-bold text-dark">@Model.Update_by</span>
+                </p>
+            </div>
+            <div class="col-md-6">
+                <p class="card-text mb-1">
+                    <small class="text-muted d-block">Last Updated Date:</small>
+                    <span class="fw-bold text-dark">@Model.Update_Date?.ToString("yyyy-MM-dd HH:mm")</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-danger" id="resetTempPatientHistoryBtn">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset
+            </button>
+            <button type="button" class="btn btn-success" id="saveTempPatientHistoryBtn">
+                <i class="bi bi-save"></i> Save Changes
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<input type="hidden" id="tempHistoryHn" value="@Model.HN" />
+<input type="hidden" id="tempHistoryMdtDate" value="@Model.MDT_Date?.ToString("yyyy-MM-ddTHH:mm:ss")" />
+<input type="hidden" id="tempHistoryMdtName" value="@Model.MDT_Name" />
+
+@section Scripts {
+    <script>
+        // ใส่โค้ด JavaScript สำหรับการ Save/Reset ที่นี่
+        // เช่น: การใช้ AJAX เพื่อส่งข้อมูลใน tempPatientHistoryTextarea
+                       $('#resetTempPatientHistoryBtn').on('click', function () {
+            // 1. ดึงค่าจาก Hidden Fields
+            var hn = $('#tempHistoryHn').val();
+            var mdtDate = $('#tempHistoryMdtDate').val();
+            var mdtName = $('#tempHistoryMdtName').val();
+
+            // 2. ยืนยันการลบ
+            if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลประวัติผู้ป่วยชั่วคราวนี้? การดำเนินการนี้ไม่สามารถยกเลิกได้")) {
+                return; // ยกเลิกการลบ
+            }
+
+            // 3. ส่งคำขอ AJAX POST
+            $.ajax({
+                type: 'POST',
+                url: '@Url.Action("DeleteTempPatientHistory", "PatientCRA")',
+                data: {
+                    hn: hn,
+                    mdtDate: mdtDate,
+                    mdtName: mdtName
+                },
+                success: function (response) {
+                    if (response.success) {
+                        // แสดง Popup ว่าลบสำเร็จ
+                        showPopup(response.message || 'ลบข้อมูลสำเร็จ และรีเซ็ตข้อมูลแล้ว', 'success');
+
+                        // 4. *** เพิ่มคำสั่งนี้เพื่อปิดแท็บ ***
+                        // เราจะหน่วงเวลาเล็กน้อยเพื่อให้ผู้ใช้เห็นข้อความ Popup ก่อนที่แท็บจะปิด
+                        setTimeout(function() {
+                            window.close();
+                        }, 1000); // หน่วงเวลา 1 วินาที
+
+                    } else {
+                        showPopup(response.message || 'ไม่สามารถลบข้อมูลได้', 'danger');
+                    }
+                },
+                error: function () {
+                    showPopup('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ หรือไม่พบข้อมูลที่จะลบ', 'danger');
+                }
+            });
+        });
+
+                $('#saveTempPatientHistoryBtn').on('click', function () {
+            // 1. ดึงค่าจาก Hidden Fields
+            var hn = $('#tempHistoryHn').val();
+            var mdtDate = $('#tempHistoryMdtDate').val();
+            var mdtName = $('#tempHistoryMdtName').val();
+
+            // 2. ดึงค่าจาก Textarea (ข้อมูลสำคัญ)
+            var patientHistory = $('#tempPatientHistoryTextarea').val();
+
+            // 3. ส่งคำขอ AJAX POST ไปยัง Action Method สำหรับบันทึก
+            $.ajax({
+                type: 'POST',
+                url: '@Url.Action("UpdateTempPatientHistory", "PatientCRA")', // ใช้ Action สำหรับ 'Save'
+                data: {
+                    hn: hn,
+                    mdtDate: mdtDate,
+                    mdtName: mdtName,
+                    patientHistory: patientHistory // ส่งเนื้อหา Textarea
+                },
+                success: function (response) {
+                    if (response.success) {
+                        showPopup(response.message || 'บันทึกข้อมูลการเตรียมประวัติสำเร็จ!', 'success');
+                        // ไม่ต้องปิดหน้าต่างหลังบันทึก (เพื่อให้ผู้ใช้ทำงานต่อได้)
+                    } else {
+                        showPopup(response.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'danger');
+                    }
+                },
+                error: function () {
+                    showPopup('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อบันทึกข้อมูลได้', 'danger');
+                }
+            });
+        });
+
+
+        function showPopup(message, type) {
+            // Remove any existing alert
+            $('#historyAlert').remove();
+
+            // Create a new alert
+            var alertHtml = `
+                <div id="historyAlert" class="alert alert-` + type + ` alert-dismissible fade show" role="alert"
+                     style="position:fixed;top:20px;right:20px;z-index:9999;">
+                    <span id="historyAlertMsg">` + message + `</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>`;
+            $('body').append(alertHtml);
+
+            // Auto-hide after 3 seconds
+            setTimeout(function () {
+                var alert = bootstrap.Alert.getOrCreateInstance(document.getElementById('historyAlert'));
+                alert.close();
+            }, 3000);
+        }
+
+
+    </script>
+}

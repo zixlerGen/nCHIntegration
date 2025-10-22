@@ -1,0 +1,75 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Overview</p>
+    <h2>nCH Integration Prototype</h2>
+    <p>Learn about <a href="https://navify.roche.com/us/en-us/marketplace/products/navify-clinical-hub#overview">navify® Clinical Hub</a>.</p>
+
+    <hr class="my-4" />
+
+    <h3>Database Connection Check</h3>
+    <div class="d-grid gap-2 col-6 mx-auto">
+        <button id="checkDefaultDb" class="btn btn-primary" data-conn-name="Default">
+            Check Default DB (SQL Server)
+        </button>
+        <div id="statusDefault" class="mt-2"></div>
+        
+        <button id="checkCRADb" class="btn btn-warning" data-conn-name="CRAConnectionString">
+            Check CRA DB (MySQL)
+        </button>
+        <div id="statusCRA" class="mt-2"></div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $(document).ready(function () {
+        // ตรวจสอบให้แน่ใจว่า jQuery โหลดแล้ว
+        if (typeof $ === 'undefined') {
+            console.error("jQuery is not loaded. Cannot bind click events.");
+            return; 
+        }
+
+        const checkUrl = '@Url.Action("CheckDbConnection", "System")';
+
+        // 🛑 ใช้ ID Selector โดยตรงเพื่อความแม่นยำ
+        $('#checkCRADb, #checkDefaultDb').on('click', function () {
+            var $button = $(this);
+            var connectionName = $button.data('conn-name');
+            var statusDivId = connectionName === 'Default' ? '#statusDefault' : '#statusCRA';
+            var originalHtml = $button.html();
+
+            console.log(`Attempting to check connection: ${connectionName} at URL: ${checkUrl}`); // <-- ตรวจสอบใน Console
+
+            // 1. Loading State
+            $button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Checking...');
+            $(statusDivId).removeClass().html('');
+
+            // 2. AJAX Call
+            $.ajax({
+                url: checkUrl,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(connectionName), 
+                success: function (response) {
+                    // ... (โค้ด success เดิม)
+                    var statusClass = response.success ? 'alert alert-success' : 'alert alert-danger';
+                    $(statusDivId).addClass(statusClass).text(response.message);
+                },
+                error: function (xhr, status, error) {
+                    // ... (โค้ด error เดิม)
+                    console.error("AJAX Failed:", xhr.responseText); // <-- ตรวจสอบ Error Response
+                    $(statusDivId).addClass('alert alert-danger').text('AJAX Error: ' + xhr.status + ' ' + error);
+                },
+                complete: function () {
+                    // 4. Reset Button
+                    $button.prop('disabled', false).html(originalHtml);
+                }
+            });
+        });
+    });
+</script>
+}

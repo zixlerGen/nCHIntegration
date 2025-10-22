@@ -1,0 +1,247 @@
+﻿@model Tuple<List<nCHIntegration.Models.TbPatientPathologySurgical>, List<nCHIntegration.Models.TbPatientPathologyCyto>>
+@{
+    var surgical = Model?.Item1 ?? new List<nCHIntegration.Models.TbPatientPathologySurgical>();
+    var cyto = Model?.Item2 ?? new List<nCHIntegration.Models.TbPatientPathologyCyto>();
+
+    // ดึง HN และ MDT Date (AppointDatetime)
+    var hn = surgical.FirstOrDefault()?.HN ?? cyto.FirstOrDefault()?.HN ?? "N/A";
+    DateTime? appointDatetime = ViewBag.AppointDatetime as DateTime?; // ต้องส่งมาทาง ViewBag
+
+    ViewData["Title"] = $"Pathology Results - {hn}";
+}
+
+<style>
+    /* Styles for the Card Layout (similar to Imaging) */
+    .pathology-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s;
+    }
+
+        .pathology-card:hover {
+            transform: translateY(-2px);
+        }
+
+    .card-memo-scroll {
+        /* ให้เนื้อหา Rich_Text_Memo สามารถ Scroll ได้หากยาวเกินไป */
+        max-height: 250px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        font-size: 0.9rem;
+    }
+
+    .card-footer-fixed {
+        margin-top: auto; /* ตรึงปุ่มไว้ด้านล่าง */
+        padding-top: 0.75rem;
+    }
+</style>
+
+@* 1. ส่วน Filter: เปลี่ยน asp-action ให้ชี้ไปที่ Pathology Action *@
+<div class="mb-4 p-3 bg-light border rounded">
+    <form method="get" asp-controller="PatientCRA" asp-action="GetTbPatientPathologyDataView">
+        @* <--- แก้ไข Action Name ที่นี่ *@
+        <div class="row align-items-end">
+            <div class="col-md-3">
+                <label for="filterDate" class="form-label">Filter by Receive Date:</label>
+                <input type="date" id="filterDate" name="filterDate" class="form-control" />
+            </div>
+            <div class="col-md-auto mt-3 mt-md-0">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> ค้นหา
+                </button>
+            </div>
+            <input type="hidden" name="hn" value="@hn" />
+        </div>
+    </form>
+</div>
+
+@* 2. Global Header Card: เพิ่ม MDT Date *@
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-microscope me-2"></i> Surgical Pathology (HN: <span class="fw-bold">@hn</span>)
+        </h5>
+    </div>
+</div>
+
+
+@if (!surgical.Any())
+{
+    <div class="alert alert-warning border-0 shadow-sm" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> No surgical pathology results found.
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+        @foreach (var item in surgical)
+        {
+            <div class="col">
+                <div class="card shadow-sm pathology-card border-left-success">
+
+                    <div class="card-header bg-success text-white py-2">
+                        <div class="fw-bold fs-6">Path No: @item.Path_no</div>
+                        <small class="text-white-50">Request No: @item.Request_No</small>
+                    </div>
+
+                    <div class="card-body p-3">
+                        <h6 class="card-subtitle mb-2 text-dark fw-semibold">Specimen Details:</h6>
+                        <div class="text-muted mb-3" style="font-size: 0.9rem;">
+                            <div>
+                                <i class="bi bi-calendar-minus me-1"></i> Receive Date:
+                                @(item.Specimen_Receive_Datetime?.ToString("dd/MM/yyyy HH:mm:ss") ?? "N/A")
+                            </div>
+
+                            <div>
+                                <i class="bi bi-calendar-check me-1"></i> Approve Date:
+                                @(item.Approve_Datetime?.ToString("dd/MM/yyyy HH:mm:ss") ?? "N/A")
+                            </div>
+                        </div>
+
+                        <h6 class="card-subtitle mb-2 text-dark fw-semibold">Pathology Memo / Findings:</h6>
+                        <div class="bg-light p-2 border rounded card-memo-scroll">
+                            @item.Rich_Text_Memo
+                        </div>
+                    </div>
+
+                    <div class="card-footer card-footer-fixed text-end bg-white border-top-0">
+                        <button type="button"
+                                class="btn btn-sm btn-info save-pathology-btn"
+                                data-histotype="Surgical"
+                                data-requestno="@item.Request_No"
+                                data-pathno="@item.Path_no"
+                                data-hn="@hn">
+                            <i class="bi bi-check-circle-fill me-1"></i> Select Surgical
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="bi bi-microscope me-2"></i> Cytology Pathology (HN: <span class="fw-bold">@hn</span>)
+        </h5>
+    </div>
+</div>
+
+@if (!cyto.Any())
+{
+    <div class="alert alert-warning border-0 shadow-sm" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> No cytology pathology results found.
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @foreach (var item in cyto)
+        {
+            <div class="col">
+                <div class="card shadow-sm pathology-card border-left-info">
+
+                    <div class="card-header bg-info text-white py-2">
+                        <div class="fw-bold fs-6">Specimen No: @item.Specimen_id</div>
+                        <small class="text-white-50">Request No: @item.Request_No</small>
+                    </div>
+
+                    <div class="card-body p-3">
+                        <h6 class="card-subtitle mb-2 text-dark fw-semibold">Specimen Details:</h6>
+                        <div class="text-muted mb-3" style="font-size: 0.9rem;">
+                            <div>
+                                <i class="bi bi-calendar-minus me-1"></i> Receive Date:
+                                @(item.Specimen_Receive_Datetime?.ToString("dd/MM/yyyy HH:mm:ss") ?? "N/A")
+                            </div>
+
+                            <div>
+                                <i class="bi bi-calendar-check me-1"></i> Approve Date:
+                                @(item.Approve_Datetime?.ToString("dd/MM/yyyy HH:mm:ss") ?? "N/A")
+                            </div>
+                        </div>
+
+                        <h6 class="card-subtitle mb-2 text-dark fw-semibold">Pathology Memo / Findings:</h6>
+                        <div class="bg-light p-2 border rounded card-memo-scroll">
+                            @item.Rich_Text_Memo
+                        </div>
+                    </div>
+
+                    <div class="card-footer card-footer-fixed text-end bg-white border-top-0">
+                        <button type="button"
+                                class="btn btn-sm btn-success save-pathology-btn"
+                                data-histotype="Cyto"
+                                data-requestno="@item.Request_No"
+                                data-pathno="@item.Specimen_id"
+                                data-hn="@hn">
+                            <i class="bi bi-check-circle-fill me-1"></i> Select Cytology
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+@section Scripts {
+    <script>        
+        // ดึงค่า Request Verification Token จาก HTML (ถ้าใช้ CSRF Token)
+        // ตรวจสอบว่ามี Form หลักในหน้าที่มี Token ซ่อนอยู่
+        var antiForgeryToken = $('input[name="__RequestVerificationToken"]').val();
+
+        $(document).ready(function () {
+            // ... (The rest of your AJAX code remains exactly the same) ...
+
+            $(document).on('click', '.save-pathology-btn', function (e) {
+                e.preventDefault();
+
+                var $button = $(this);
+                var histoType = $button.data('histotype');
+                var requestNo = $button.data('requestno');
+                var pathNo = $button.data('pathno');
+                var hn = $button.data('hn');
+
+                // 2. ตั้งค่า URL และข้อมูลที่จะส่ง
+                var url = '/PatientCRA/SaveSinglePathology';
+                var postData = {
+                    '__RequestVerificationToken': antiForgeryToken, // สำหรับ CSRF
+                    hn: hn,
+                    requestNo: requestNo,
+                    histoType: histoType,
+                    pathNo: pathNo
+                };
+
+                // 3. ปิดการใช้งานปุ่มและแสดงสถานะ Loading
+                $button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...');
+
+                // 4. เรียกใช้ AJAX
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: postData,
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.success) {
+                            $button.removeClass('btn-info btn-success').addClass('btn-secondary');
+                            $button.html('<i class="bi bi-check-all me-1"></i> Saved');
+                            alert('Success: ' + response.message);
+                        } else {
+                            $button.prop('disabled', false).html('<i class="bi bi-x-circle-fill me-1"></i> Error Saving');
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        $button.prop('disabled', false);
+                        var originalText = histoType === 'Surgical' ? 'Select Surgical' : 'Select Cytology';
+                        var originalClass = histoType === 'Surgical' ? 'btn-info' : 'btn-success';
+
+                        $button.removeClass('btn-secondary').addClass(originalClass);
+                        $button.html('<i class="bi bi-check-circle-fill me-1"></i> ' + originalText);
+                        alert('An error occurred during save: ' + error + (xhr.status == 400 ? ' (Possible CSRF Token mismatch)' : ''));
+                    }
+                });
+            });
+        });
+    </script>
+}

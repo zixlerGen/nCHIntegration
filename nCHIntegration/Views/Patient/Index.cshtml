@@ -1,0 +1,80 @@
+﻿@model nCHIntegration.Models.Patient
+@{
+    ViewData["Title"] = "KKU Patient";
+}
+
+<div class="logo-container">
+    <img src="/images/logo_mdkku_c.jpg" alt="Logo" class="logo" />
+</div>
+
+<style>
+    .logo-container {
+        display: flex;
+        justify-content: center; /* Centers horizontally */
+        align-items: center; /* Centers vertically */
+        height: 200px; /* Optional: Adjust height as needed */
+    }
+
+    .logo {
+        max-width: 100%; /* Ensures the image scales responsively */
+        height: auto; /* Maintains the aspect ratio */
+        width: 250px; /* Adjust the width as needed */
+    }
+</style>
+
+<form method="post">
+    <div class="mb-3">
+        <label for="searchInput" class="form-label">Search by Hospital Number</label>
+        <input type="text" id="hn" name="hn" class="form-control" placeholder="Enter Hospital Number" />
+    </div>
+    <button type="submit" class="btn btn-primary" asp-controller="Patient" asp-action="Index">Search</button>
+</form>
+
+
+@if (Model != null)
+{
+    <h2></h2>
+    <h1>HN: @Model.HN @Model.Title@Model.FirstName @Model.MiddleName @Model.LastName @Model.Insurance @Model.Location</h1>
+
+    <form method="post" asp-controller="Patient" asp-action="SendTonavify">
+        <input type="hidden" name="HN" value="@Model.HN" />
+        <button type="submit" class="btn btn-danger">Send To navify</button>
+    </form>
+    <h2></h2>
+    <h2 class="text-decoration-underline">PACS</h2>
+    <div class="container">
+        <p>@Model.PACS</p>
+    </div>
+    <h2 class="text-decoration-underline">Pathology Results</h2>
+    <div class="container">
+        <table class="table table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>RequestNumber</th>
+                    <th>RequestItemCode</th>
+                    <th>RequestItemName</th>
+                    <th>RequestDate</th>
+                    <th>ResultDate</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.PathologyResults)
+                {
+                    <tr>
+                        <td>@item.RequestNumber</td>
+                        <td>@item.RequestItemCode</td>
+                        <td>@item.RequestItemName</td>
+                        <td>@item.RequestDate.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@item.ResultDate.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-center align-items-center vh-10">
+        <p class="text-danger text-center">No patient data found. Please try searching with a different Hospital Number.</p>
+    </div>
+}

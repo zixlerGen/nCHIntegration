@@ -1,0 +1,12 @@
+﻿@model nCHIntegration.ViewModels.HL7MessageVM
+
+<h2>HL7 Message All</h2>
+@foreach (var hl7 in Model.hl7Message)
+{
+    <h5>@hl7.MessageID @hl7.MessageType @hl7.MessageName</h5>
+    <h6>File Path: @hl7.FilePath</h6>
+    <h6>Message Content:</h6>
+    <pre>@hl7.MessageContent</pre>
+    <p>Send to navify: @hl7.SFTPSendOutStatus  DateTime: @hl7.SFTPSendOutTime</p>
+    <hr /> <!-- This adds a horizontal line to separate each group -->
+}

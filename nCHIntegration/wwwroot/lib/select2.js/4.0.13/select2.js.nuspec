@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Select2.js</id>
+    <version>4.0.13</version>
+    <authors>Kevin Brown,Igor Vaynberg,and Select2 contributors</authors>
+    <owners>Kevin Brown,Igor Vaynberg,and Select2 contributors</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/select2/select2/blob/master/LICENSE.md</licenseUrl>
+    <projectUrl>https://select2.github.io/</projectUrl>
+    <description>A jQuery based replacement for select boxes. It supports searching, remote data sets, and infinite scrolling of results.</description>
+    <summary>Select2 gives you a customizable select box with support for searching, tagging, remote data sets, infinite scrolling, and many other highly used options.</summary>
+    <releaseNotes>New features / improvements
+
+Trigger input event before change events (#4649)
+Feed back the keypress code that was responsible for the 'close' event (#5513)
+Only trigger selection:update once on DOM change events (#5734)
+
+Bug fixes
+
+Prevent opening of disabled elements (#5751)
+
+Miscellaneous
+
+Registered Select2 on Open Collective (#5700, #5721, #5741)</releaseNotes>
+    <language>en-US</language>
+    <dependencies>
+      <dependency id="jQuery" version="1.7.0" />
+    </dependencies>
+  </metadata>
+</package>

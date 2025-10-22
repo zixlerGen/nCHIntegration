@@ -1,0 +1,195 @@
+﻿@model nCHIntegration.ViewModels.PatientHistoryViewModel
+@{
+    // ประกาศตัวแปรเพื่อให้อ่านง่ายขึ้น
+    var historyList = Model.HistoryList;
+    var appointDatetime = Model.AppointDatetime;
+    var hn = Model.HN;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Patient History - @hn</title>
+    <link href="~/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/css/bootstrap-icons.min.css">
+    <style>
+        /* ลบสไตล์ Modal ออกทั้งหมด และปรับปรุง Body เล็กน้อย */
+        body {
+            background-color: #f8f9fa; /* สีพื้นหลังอ่อน ๆ */
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .container-fluid {
+            max-width: 1400px; /* จำกัดความกว้างเพื่อให้เนื้อหาอ่านง่ายบนจอใหญ่ */
+        }
+
+        .table th, .table td {
+            vertical-align: top;
+            padding: 0.5rem;
+        }
+
+        .table thead th {
+            /* ใช้สี Primary ของ Bootstrap เป็นพื้นหลัง */
+            background-color: #0d6efd; /* Bootstrap 5 Primary color */
+            color: white; /* ตั้งค่าข้อความเป็นสีขาวเพื่อให้ตัดกัน */
+            border-color: #0d6efd;
+        }
+
+        .table tbody tr:nth-child(even) {
+            background-color: #f8f9fa; /* Zebra striping */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-person-lines-fill me-2"></i> Patient History (HN: <span class="fw-bold">@hn</span>)
+                </h4>
+                <div class="text-end">
+                    <span class="d-block">MDT Date: @(appointDatetime?.ToString("yyyy-MM-dd") ?? "N/A")</span>
+                </div>
+            </div>
+
+            <div class="card-body">
+
+                <div class="mb-4 p-3 bg-light border rounded">
+                    <form method="get" asp-controller="PatientCRA" asp-action="GetTbPatientHistoryDataView">
+                        <div class="row align-items-end">
+                            <div class="col-md-3">
+                                <label for="filterDate" class="form-label">Filter by Visit Date:</label>
+                                <input type="date" id="filterDate" name="filterDate" class="form-control" value="@(Model.FilterDate?.ToString("yyyy-MM-dd"))" />
+                            </div>
+                            <div class="col-md-auto mt-3 mt-md-0">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search"></i> ค้นหา
+                                </button>
+                            </div>
+                            <input type="hidden" name="hn" value="@hn" />
+                            <input type="hidden" name="appointDate" value="@(appointDatetime?.ToString("yyyy-MM-ddTHH:mm:ss") ?? "")" />
+                        </div>
+                    </form>
+                </div>
+
+                @if (historyList == null || !historyList.Any())
+                {
+                    <div class="alert alert-warning my-4" role="alert">
+                        <i class="bi bi-info-circle-fill"></i> No patient history data found.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover table-bordered">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 25%;">Clinic/Visit Date</th>
+                                    <th>Subjective Data / Plan of Management</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var history in historyList)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="text-primary fw-semibold">@history.clinic_name</div>
+                                            <small class="text-muted">Visit Date: @(history.Visit_date?.ToString("yyyy-MM-dd HH:mm") ?? "N/A")</small>
+                                        </td>
+                                        <td>
+                                            <form method="post" asp-controller="PatientCRA" asp-action="SaveHistory" class="save-history-form">
+                                                <textarea class="form-control" rows="12" name="SubjectiveData" style="font-size: 0.85rem; resize: vertical;">@history.Subjective_Data</textarea>
+
+                                                <input type="hidden" name="HN" value="@history.HN" />
+                                                <input type="hidden" name="Visit_date" value="@(history.Visit_date?.ToString("yyyy-MM-ddTHH:mm:ss") ?? string.Empty)" />
+                                                <input type="hidden" name="Appoint_Datetime" value="@(appointDatetime?.ToString("yyyy-MM-ddTHH:mm:ss") ?? "")" />
+                                                <input type="hidden" name="Clinic_code" value="@history.clinic" /> @* แนะนำให้เพิ่ม Clinic_code ด้วย *@
+
+                                                <div class="mt-2 text-end">
+                                                    <button type="submit" class="btn btn-success btn-sm">
+                                                        <i class="bi bi-check-circle"></i> Select to Prepare
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <div class="card-footer text-end">
+                <button type="button" class="btn btn-secondary" onclick="window.close()">
+                    <i class="bi bi-x-circle"></i> Close Window
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/jquery-3.6.0.min.js"></script>
+
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // 1. **FUNCTION: showPopup (ย้ายมาที่นี่)**
+        function showPopup(message, type) {
+            // Remove any existing alert
+            $('#historyAlert').remove();
+
+            // Create a new alert
+            var alertHtml = `
+                <div id="historyAlert" class="alert alert-` + type + ` alert-dismissible fade show" role="alert"
+                     style="position:fixed;top:20px;right:20px;z-index:9999;">
+                    <span id="historyAlertMsg">` + message + `</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>`;
+            $('body').append(alertHtml);
+
+            // Auto-hide after 3 seconds
+            setTimeout(function () {
+                // ต้องแน่ใจว่าเรียกใช้ Bootstrap 5 JS function ถูกต้อง
+                var alertElement = document.getElementById('historyAlert');
+                if (alertElement) {
+                    var alert = bootstrap.Alert.getOrCreateInstance(alertElement);
+                    alert.close();
+                }
+            }, 3000);
+        }
+
+        // 2. **AJAX: Select to Prepare (Save History)**
+        $(document).on('submit', '.save-history-form', function (e) {
+            e.preventDefault();
+            var $form = $(this);
+
+            if (!confirm('ยืนยันที่จะเลือกข้อมูลประวัติผู้ป่วยนี้เพื่อเตรียมหรือไม่?')) {
+                return;
+            }
+
+            // แสดง Loading state ถ้ามี
+
+            $.ajax({
+                type: 'POST',
+                url: $form.attr('action'),
+                data: $form.serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        // showPopup ถูกเรียกใช้ได้แล้ว
+                        showPopup(response.message || 'บันทึกข้อมูลสำเร็จ', 'success');
+                    } else {
+                        showPopup(response.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'danger');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    showPopup('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์: ' + error, 'danger');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
