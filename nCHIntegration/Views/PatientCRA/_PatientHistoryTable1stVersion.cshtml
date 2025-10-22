@@ -1,0 +1,97 @@
+﻿@* @model (List<nCHIntegration.Models.TbPatientHistory> HistoryList, DateTime? AppointDatetime) *@
+@model nCHIntegration.ViewModels.PatientHistoryViewModel
+@{
+    var historyList = Model.HistoryList;
+    var appointDatetime = Model.AppointDatetime;
+    var filterDate = Model.FilterDate;
+    var hn = Model.HN;
+}
+
+<div class="mb-3">
+    <form method="get" asp-controller="PatientCRA" asp-action="GetTbPatientHistoryDataView">
+        <div class="input-group" style="max-width:300px;">
+            <input type="hidden" name="hn" value="@hn" />
+            <input type="hidden" name="appointDate" value="@(appointDatetime?.ToString("yyyy-MM-ddTHH:mm:ss") ?? "")" />
+            <input type="date" id="filterDate" name="filterDate" class="form-control" style="max-width: 250px;" />
+            <button type="submit" class="btn btn-primary">ค้นหา</button>
+        </div>
+    </form>
+</div>
+
+@if (historyList == null || !historyList.Any())
+{
+    <div class="alert alert-warning">No patient history data found.</div>
+}
+else
+{
+    <table class="table table-bordered table-sm">
+        <thead>
+            <tr>
+                <th style="width: 200px;">Subjective Data/Plan of Management</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < historyList.Count; i++)
+            {
+                <tr>
+                    <td>
+                        @historyList[i].clinic_name @(historyList[i].Visit_date?.ToString("yyyy-MM-dd") ?? "-")
+                        <br />
+                        <span class="text-muted">MDT Date: @(appointDatetime?.ToString("yyyy-MM-dd") ?? "-")</span>
+                    </td>
+                    <td>
+                        <form method="post" asp-controller="PatientCRA" asp-action="SaveHistory" style="margin-bottom:0;" class="save-history-form">
+                            <textarea class="form-control" rows="20" name="SubjectiveData">@historyList[i].Subjective_Data</textarea>
+                            <input type="hidden" name="HN" value="@historyList[i].HN" />
+                            <input type="hidden" name="MDT_Date" value="@(appointDatetime?.ToString("yyyy-MM-ddTHH:mm:ss") ?? "")" />
+                            <button type="submit" class="btn btn-primary btn-sm mt-2">Save to Prepare</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+@section Scripts {
+    <script>
+        $(document).on('submit', '.save-history-form', function (e) {
+            e.preventDefault();
+            var $form = $(this);
+            $.ajax({
+                type: 'POST',
+                url: $form.attr('action'),
+                data: $form.serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        showPopup(response.message, 'success');
+                    } else {
+                        showPopup(response.message || 'เกิดข้อผิดพลาด', 'danger');
+                    }
+                },
+                error: function () {
+                    showPopup('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'danger');
+                }
+            });
+        });
+
+        function showPopup(message, type) {
+            // Remove any existing alert
+            $('#historyAlert').remove();
+
+            // Create a new alert
+            var alertHtml = `
+                <div id="historyAlert" class="alert alert-` + type + ` alert-dismissible fade show" role="alert"
+                     style="position:fixed;top:20px;right:20px;z-index:9999;">
+                    <span id="historyAlertMsg">` + message + `</span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>`;
+            $('body').append(alertHtml);
+
+            // Auto-hide after 3 seconds
+            setTimeout(function () {
+                $('#historyAlert').alert('close');
+            }, 3000);
+        }
+    </script>
+}

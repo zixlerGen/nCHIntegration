@@ -1,9 +1,21 @@
-﻿@model Tuple<List<nCHIntegration.Models.CRA_MDT_Appointment>, List<nCHIntegration.Models.CRA_Patient_Right>, List<nCHIntegration.Models.CRA_MDT_Group>>
+﻿@using Microsoft.Extensions.Primitives
+@model Tuple<List<nCHIntegration.Models.CRA_MDT_Appointment>, 
+    List<nCHIntegration.Models.CRA_Patient_Right>, 
+    List<nCHIntegration.Models.CRA_MDT_Group>, 
+    List<nCHIntegration.Models.CRA_MDT_Doctor>, 
+    List<nCHIntegration.Models.CRA_MDT_Consult>,
+    List<nCHIntegration.Models.CRA_Point_Of_Discussion>>
 @{
     ViewData["Title"] = "CRA Patient";
     var appointments = Model?.Item1 ?? new List<nCHIntegration.Models.CRA_MDT_Appointment>();
     var patientRights = Model?.Item2 ?? new List<nCHIntegration.Models.CRA_Patient_Right>();
     var mdtGroup = Model?.Item3 ?? new List<nCHIntegration.Models.CRA_MDT_Group>();
+    var mdtDoctorList = Model?.Item4 ?? new List<nCHIntegration.Models.CRA_MDT_Doctor>();
+    var mdtConsult = Model?.Item5 ?? new List<nCHIntegration.Models.CRA_MDT_Consult>();
+    var mdtPointOfDiscussion = Model?.Item6 ?? new List<nCHIntegration.Models.CRA_Point_Of_Discussion>();
+    var mdtDateSearch = Context.Request.Method == "POST" && Context.Request.ContentType?.Contains("application/x-www-form-urlencoded") == true
+        ? Context.Request.Form["mdtDate"]
+        : StringValues.Empty;
 }
 
 <style>
@@ -21,52 +33,136 @@
     }
 </style>
 
-<form method="post">
-   @*  <img src="/images/AW_ChulabhornH_VerticalLogo_TH.png" alt="Logo" class="logo d-block mx-auto" /> *@
-    <br />
-    <div class="mb-3 d-flex align-items-center">
-        <label for="searchInput" class="form-label me-2">Search by MDT Date</label>
-        <input type="date" id="mdtDate" name="mdtDate" class="form-control me-2" style="max-width: 250px;" placeholder="Select MDT Date" />
-        <button type="submit" class="btn btn-primary" asp-controller="PatientCRA" asp-action="Index">Search</button>
+<!-- In the <head> section -->
+<link href="~/lib/select2/select2.min.css" rel="stylesheet" />
+
+<div class="row mb-4 align-items-center">
+
+    <div class="col-auto">
+        <label for="mdtDate" class="col-form-label fw-bold">
+            <i class="bi bi-calendar-date me-1"></i> Search by MDT Date:
+        </label>
     </div>
-</form>
+
+    <div class="col-auto">
+        <form method="post" class="d-flex align-items-center gap-2">
+
+            <input type="date"
+                   id="mdtDate"
+                   name="mdtDate"
+                   class="form-control"
+                   style="width: 200px;"
+                   {{-- **ตำแหน่งที่เพิ่มโค้ด Razor** --}}
+                   value="@ViewBag.SelectedMdtDate"
+                   {{-- **ตำแหน่งที่เพิ่มโค้ด Razor** --}}
+                   placeholder="Select MDT Date" />
+
+            <button type="submit" class="btn btn-primary" asp-controller="PatientCRA" asp-action="Index">
+                <i class="bi bi-search me-1"></i> Search
+            </button>
+
+        </form>
+    </div>
+
+</div>
 
 @if (appointments == null || appointments.Count == 0)
 {
-    <div class="d-flex justify-content-center align-items-center vh-10">
-        <p class="text-danger text-center">No patient data found. Please try searching with a different Date.</p>
+    <div class="d-flex flex-column justify-content-center align-items-center vh-25 py-5 border rounded-3 bg-light-subtle">
+        @*
+        - d-flex flex-column: จัดเรียงเนื้อหาในแนวตั้ง
+        - vh-25: เพิ่มความสูงให้พอเหมาะ (25% ของ viewport height) เพื่อไม่ให้เตี้ยเกินไป
+        - py-5: เพิ่ม Padding แนวตั้ง
+        - border rounded-3 bg-light-subtle: เพิ่มกรอบและสีพื้นหลังอ่อนๆ เพื่อให้ Message Box โดดเด่นจากพื้นหลัง
+    *@
+
+        <i class="bi bi-exclamation-octagon-fill text-danger mb-3" style="font-size: 2.5rem;"></i>
+        @* ใช้ Icon เตือนขนาดใหญ่เพื่อดึงดูดความสนใจและสื่อสารสถานะทันที *@
+
+        <h4 class="text-danger text-center mb-2">
+            No Patient Data Found
+        </h4>
+        @* ใช้ Heading (h4) เพื่อเน้นหัวข้อหลัก *@
+
+        <p class="text-secondary text-center fs-6">
+            Please try searching with a different **MDT Date**.
+        </p>
+        @* ข้อความรอง ใช้สีเทาอ่อน (text-secondary) และเน้นคำว่า MDT Date *@
+
     </div>
 }
 else
 {
     <h2></h2>
-    <h1 class="text-decoration-underline">Case Tumor Board</h1>
-    <input type="text" id="consult" name="consult" class="form-control" placeholder="Enter Doctor Name" />
+    <div class="mb-4">
+        @* ส่วน Title: ใช้ Text Utility เพื่อจัดเรียงและเน้นหัวข้อ *@
+        <h3 class="border-bottom pb-2 mb-3 text-primary">
+            <i class="bi bi-calendar-check me-2"></i> Case Tumor Board
+            <span class="text-secondary ms-2">@mdtDateSearch</span> @* แยกวันที่ออกมาเป็น Sub-title *@
+        </h3>
+
+        @* ส่วน Input สำหรับ Doctor Consult *@
+        <div class="row align-items-center g-2">
+            @* ใช้ Bootstrap Grid (row) เพื่อการจัดวางที่ดีขึ้น และ g-2 คือ gap 2 *@
+
+            <div class="col-md-9 col-lg-10">
+                @* ทำให้ช่อง Input กว้างขึ้น *@
+                <label for="consultInput" class="form-label fw-semibold visually-hidden">
+                    Doctor Name for Consult
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted">
+                        <i class="bi bi-person-circle"></i> MDT Consult Doctor
+                    </span>
+                    <input type="text"
+                           id="consultInput"
+                           name="consult"
+                           class="form-control"
+                           placeholder="Enter Attending Doctor Name for Consultation"
+                           value="@(mdtConsult.FirstOrDefault()?.Doctor_Consult.ToString() ?? "")" /> @* ลบ style="width:100%" ออก เพราะ form-control จะกว้าง 100% อยู่แล้วใน col นั้น ๆ *@
+                </div>
+            </div>
+
+            <div class="col-md-3 col-lg-2">
+                @* ทำให้ปุ่มกว้างเต็มพื้นที่ที่เหลือ *@
+                <button type="button" class="btn btn-success w-100 saveConsult">
+                    <i class="bi bi-save-fill me-1"></i> Save Doctor
+                </button>
+            </div>
+
+        </div>
+    </div>
     <h2></h2>
     <form id="navifyForm" method="post" asp-controller="PatientCRA" asp-action="GenerateNavifyFile">
-        <div class="container">
-            <table class="table table-bordered" style="font-size: smaller;">
-                <thead class="table-light">
+        <div class="container-fluid mt-3">
+            @* ใช้ container-fluid เพื่อให้ตารางใช้ความกว้างสูงสุด *@
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4><i class="bi bi-list-columns-reverse me-2"></i> Patient MDT List</h4>
+                <button type="button" class="btn btn-sm btn-success me-2" id="submitToNavify" disabled>
+                    <i class="bi bi-send-fill me-1"></i> Send Selected Items
+                </button>
+            </div>
+
+            @* ปรับขนาด font เป็นเล็กพิเศษ (0.8rem) เพื่อรองรับข้อมูลที่เยอะ *@
+            <table class="table table-bordered table-hover w-100" style="font-size: 0.8rem;">
+
+                <thead class="table-primary text-white">
+                    @* ใช้สีหลักที่เข้มขึ้นเพื่อเน้นส่วนหัว *@
                     <tr>
-                        <th class="text-center">
-                            <input type="checkbox" id="selectAll" class="form-check-input" />
+                        <th class="text-center align-middle" style="width: 3%;">
+                            <input type="checkbox" id="selectAll" class="form-check-input" title="Select All" />
                         </th>
-                        <th class="text-center">No.</th>
-                        <th class="text-center">Doctor</th>
-                        <th class="text-center">HN</th>
-                        <th class="text-center">Name</th>
-                        <th class="text-center">Age</th>
-                        <th class="text-center">Dx.</th>
-                        <th class="text-center">Group</th>
-                        <th class="text-center">CTB</th>
-                        <th class="text-center">Visit</th>
-                        <th class="text-center">Right</th>
-                        <th class="text-center">แพทย์/Specialty ที่ต้องการปรึกษา</th>
-                        <th class="text-center">Review Image</th>
-                        <th class="text-center">App.</th>
-                        <th class="text-center">Details</th>
+                        <th class="text-center align-middle" style="width: 3%;">#</th>
+                        <th class="text-center align-middle" style="width: 15%;">Patient Info</th>
+                        <th class="text-center align-middle" style="width: 10%;">MDT Details</th>
+                        <th class="text-center align-middle" style="width: 15%;">Diagnosis / Consult</th>
+                        <th class="text-center align-middle" style="width: 15%;">MDT Status</th> @* รวม Status และ Appointment *@
+                        <th class="text-center align-middle" style="width: 15%;">Details & History</th>
+                        <th class="text-center align-middle" style="width: 15%;">Lab & Imaging & Pathology</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     @{
                         var rowNumber = 1;
@@ -76,40 +172,138 @@ else
                         var item = appointments[i];
                         var modalId = $"editModal_{i}";
                         var formId = $"confirmOrEditForm_{i}";
-                        <tr>
-                            <td class="text-center">
+                        var today = DateTime.Today;
+                        var age = today.Year - item.Birth_Datetime.Year;
+                        if (item.Birth_Datetime.Date > today.AddYears(-age)) age--;
+
+                        // กำหนดคลาสสีแถวตามสถานะ
+                        var rowClass = item.Confirm_Status ? "table-success bg-opacity-10" : "";
+
+                        <tr class="@rowClass">
+
+                            @* 1. Checkbox *@
+                            <td class="text-center align-middle">
                                 <input type="checkbox" class="form-check-input row-checkbox"
                                        name="selectedItems"
                                        value="@item.HN"
                                        data-mdt-date="@item.Appoint_Datetime.ToString("yyyy-MM-dd")" />
                             </td>
-                            <th class="text-center">@rowNumber</th>
-                            <th class="text-center">@item.Doctor_Name</th>
-                            <th class="text-center">@item.HN</th>
-                            <th class="text-center">@item.Initial_Name @item.First_Name @item.Last_Name</th>
-                            <th class="text-center">
-                                @{
-                                    var today = DateTime.Today;
-                                    var age = today.Year - item.Birth_Datetime.Year;
-                                    if (item.Birth_Datetime.Date > today.AddYears(-age)) age--;
-                                }
-                                @age
-                            </th>
-                            <th class="text-center">Null</th>
-                            <th class="text-center">@item.MDT_Group</th>
-                            <th class="text-center">@item.CTB_No</th>
-                            <th class="text-center">@item.MDT_Visit</th>
-                            <th class="text-center">@item.Right_Name</th>
-                            <th class="text-center">@item.MDT_Consult</th>
-                            <th class="text-center">@item.MDT_Review_Image</th>
-                            <th class="text-center">@item.MDT_Appointment</th>
-                            <th class="text-center" title="@item.Remarks_Memo">
-                                <button type="button" class="btn btn-sm btn-secondary ms-2" data-bs-toggle="modal" data-bs-target="#@modalId">Detials</button>
-                                @if (item.confirm_status)
-                                {
-                                    <span class="badge bg-success">Send to nCH</span>
-                                }
-                            </th>
+
+                            @* 2. No. *@
+                            <th class="text-center align-middle">@rowNumber</th>
+
+                            @* 3. Patient Info (Doctor, HN, Name, Age) *@
+                            <td class="align-top">
+                                <div class="fw-semibold text-primary" title="Doctor">@item.appoint_by_doctor_name</div>
+                                <div class="fw-bold">HN: @item.HN</div>
+                                <div>@item.Initial_Name @item.First_Name @item.Last_Name (@age ปี)</div>
+                            </td>
+
+                            @* 4. MDT Details (Group, CTB, Visit, Right) *@
+                            <td class="align-top">
+                                <div class="mb-1"><span class="badge bg-secondary">Group</span> @item.MDT_Group</div>
+                                <div class="mb-1"><span class="badge bg-secondary">CTB</span> @item.CTB_No</div>
+                                <div class="mb-1"><span class="badge bg-secondary">Visit</span> @item.MDT_Visit</div>
+                                <div><span class="badge bg-secondary">Right</span> @item.Right_Name</div>
+                            </td>
+
+                            @* 5. Diagnosis / Consult *@
+                            <td class="align-top">
+                                <div class="fw-bold">Dx:</div>
+                                @* ใช้ text-truncate และ title เพื่อย่อข้อความให้สั้นลง แต่มี Tooltip ให้ดูข้อมูลเต็ม *@
+                                <div class="text-truncate" style="max-width: 250px;" title="@item.Diagnostic_Name">
+                                    @item.Diagnostic_Name
+                                </div>
+                                <div class="mt-2 fw-bold">Consult:</div>
+                                <div class="text-truncate" style="max-width: 250px;" title="@item.MDT_Consult">
+                                    @item.MDT_Consult
+                                </div>
+                            </td>
+
+                            @* 6. MDT Status (Confirm, Imaging, Patho, History, App., Review Image) *@
+                            <td class="align-top text-center">
+                                @* ------------------- Send/Resend Button Block ------------------- *@
+                                <div class="mb-2 d-flex align-items-center justify-content-center">
+
+                                    @* 1. ใช้ปุ่มเดียว และเปลี่ยน Class (สี) ตามสถานะ *@
+                                    <button type="button"
+                                            class="btn btn-sm @(item.Confirm_Status ? "btn-success" : "btn-primary") fw-bold shadow-sm single-row-send-btn"
+                                            data-hn="@item.HN"
+                                            data-mdt-date="@item.Appoint_Datetime.ToString("yyyy-MM-dd")"
+                                            @* ถ้าเป็น Sent แล้ว ให้แสดง Title เป็น "Resend" ถ้ายัง ให้แสดง "Send Now" *@
+                                            title="@(item.Confirm_Status ? "Click to Resend this item" : "Click to Submit this item only")">
+
+                                        @* 2. เปลี่ยน Icon และข้อความตามสถานะ *@
+                                        @(item.Confirm_Status
+                                                                        ? Html.Raw("<i class=\"bi bi-check-circle-fill me-1\"></i> Resend")
+                                                                        : Html.Raw("<i class=\"bi bi-cloud-upload-fill me-1\"></i> Send Now")
+                                                                        )
+                                </button>
+                            </div>
+
+                                @* ------------------- Sub-Status Badges Block ------------------- *@
+                                <div class="d-flex justify-content-center gap-2 mb-2">
+                                    @* ปรับสี: Success (มีข้อมูล) / Warning (ไม่มีข้อมูล) *@
+                                    <span class="badge @(item.Imaging_Status ? "bg-success" : "bg-warning text-dark")" title="Imaging Status">IMG</span>
+                                    <span class="badge @(item.Patho_Status ? "bg-success" : "bg-warning text-dark")" title="Pathology Status">Patho</span>
+                                    <span class="badge @(item.History_Status ? "bg-success" : "bg-warning text-dark")" title="History Status">Hist</span>
+                                </div>
+
+                                @* ------------------- Details Block ------------------- *@
+                                <div class="mt-2 text-start small">
+                                    @* เพิ่ม class "small" เพื่อลดขนาดตัวอักษรทำให้ดูเป็นรายละเอียด *@
+                                    <i class="bi bi-calendar-check me-1"></i> **App.:** @item.MDT_Appointment
+                                </div>
+                                <div class="text-start small">
+                                    <i class="bi bi-image me-1"></i> **Review:** @item.MDT_Review_Image
+                                </div>
+                            </td>
+
+                            @* 7. Details & History (ปุ่มหลัก) *@
+                            <td class="text-center align-middle">
+                                <div class="d-grid gap-2">
+                                    @* ปุ่ม Appointment/Edit (เปิด Modal) *@
+                                    <button type="button" class="btn btn-sm btn-primary" title="@item.Remarks_Memo"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#@modalId">
+                                        <i class="bi bi-pencil-square me-1"></i> Edit Appointment
+                                    </button>
+
+                                    @* ปุ่ม History (ยุบรวม) *@
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-info text-white"
+                                                onclick="OpenPatientHistoryTab('@item.HN', '@item.Appoint_Datetime.ToString("yyyy-MM-ddTHH:mm:ss")')">
+                                            <i class="bi bi-clock-history me-1"></i> History
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-info text-white dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <span class="visually-hidden">Toggle Dropdown</span>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" onclick="OpenPatientHistoryTab('@item.HN', '@item.Appoint_Datetime.ToString("yyyy-MM-ddTHH:mm:ss")')">Patient History</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="OpenPatientHistoryPrepareTab('@item.HN', '@item.Appoint_Datetime.ToString("yyyy-MM-ddTHH:mm:ss")')">Prepare History</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+
+                            @* 8. Lab & Imaging (ปุ่มหลัก) *@
+                            <td class="text-center align-middle">
+                                <div class="d-grid gap-2">
+                                    @* ปุ่ม Lab/Imaging/Pathology (ยุบรวม) *@
+                                    <div class="btn-group dropup">
+                                        @* ใช้ dropup เพื่อไม่ให้เมนูล้นตาราง *@
+                                        <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-file-earmark-bar-graph me-1"></i> View Results
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            @* แสดงเมนูไปทางขวา *@
+                                            <li><a class="dropdown-item" href="#" onclick="OpenPatientLabTab('@item.HN')"><i class="bi bi-activity me-1"></i> BioMarker (Lab)</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="OpenPatientImagingTab('@item.HN')"><i class="bi bi-image me-1"></i> Imaging</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="OpenPatientHistologyTab('@item.HN')"><i class="bi bi-microscope me-1"></i> Pathology</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
 
                         rowNumber++;
@@ -117,92 +311,355 @@ else
                 </tbody>
             </table>
         </div>
+
         @for (int i = 0; i < appointments.Count; i++)
         {
             var item = appointments[i];
             var modalId = $"editModal_{i}";
             var formId = $"confirmOrEditForm_{i}";
-            <div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="@($"{modalId}_Label")" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
+
+            @* เพิ่ม data-bs-backdrop="static" และ data-bs-keyboard="false" *@
+            <div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="@($"{modalId}_Label")" aria-hidden="true"
+                 data-bs-backdrop="static" data-bs-keyboard="false">
+
+                <div class="modal-dialog modal-xl">
                     <div class="modal-content">
-                        @* <form id="@formId" method="post" asp-controller="PatientCRA" asp-action="ConfirmOrEdit"> *@
                         <form id="@formId" onsubmit="return false;" method="post">
                             @Html.AntiForgeryToken()
-                            <!-- ...modal content as before... -->
 
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="@($"{modalId}_Label")">Edit/Confirm Patient Data</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title" id="@($"{modalId}_Label")">
+                                    <i class="bi bi-pencil-square me-2"></i> Edit/Confirm Patient MDT Data
+                                </h5>
+                                @* ปุ่มปิด (X) ยังทำงานได้ตามปกติเพราะมี data-bs-dismiss="modal" *@
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                             <div class="modal-body">
                                 <input type="hidden" name="MDTDate" value="@item.Appoint_Datetime" />
-                                <div class="mb-3 d-flex align-items-center">
-                                    <label class="form-label me-2" style="min-width: 40px;">HN</label>
-                                    <input type="text" class="form-control me-3" name="HN" value="@item.HN" readonly style="max-width: 120px;" />
-                                    <label class="form-label me-2" style="min-width: 60px;">Name</label>
-                                    <input type="text" class="form-control me-3" name="FullName" value="@($"{item.Initial_Name} {item.First_Name} {item.Last_Name}")" readonly style="max-width: 280px;" />
-                                    <label class="form-label me-2" style="min-width: 60px;">CTB No</label>
-                                    <input type="text" class="form-control me-3" name="CTB_No" value="@item.CTB_No" style="max-width: 100px;" />
-                                    <label class="form-label me-2" style="min-width: 40px;">Visit</label>
-                                    <input type="text" class="form-control me-3" name="MDT_Visit" value="@item.MDT_Visit" style="max-width: 50px;" />
+
+                                <h6 class="border-bottom pb-2 mb-3 text-primary">Patient & Visit Details</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold">HN</label>
+                                        <input type="text" class="form-control form-control-sm" name="HN" value="@item.HN" readonly />
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-semibold">Full Name</label>
+                                        <input type="text" class="form-control form-control-sm" name="FullName" value="@($"{item.Initial_Name} {item.First_Name} {item.Last_Name}")" readonly />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label fw-semibold">CTB No</label>
+                                        <input type="text" class="form-control form-control-sm" name="CTB_No" value="@item.CTB_No" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label fw-semibold">MDT Visit</label>
+                                        <input type="text" class="form-control form-control-sm" name="MDT_Visit" value="@item.MDT_Visit" />
+                                    </div>
                                 </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold">MDT Meeting Name</label>
+                                        <input type="text" class="form-control" name="MDT_Meeting" value="@item.MDT_Meeting_Name" readonly/>
+                                    </div>
+                                </div>
+
+                                <h6 class="border-bottom pb-2 mb-3 mt-4 text-primary">MDT Discussion</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Diagnostics</label>
+                                        <input type="text" class="form-control" name="Diagnostics"
+                                               value="@item.Diagnostic_Name" title="@item.Diagnostic_Name" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Point of Discussion</label>
+                                        <select class="form-select select2" name="Point_Of_Discussion">
+                                            @if (string.IsNullOrEmpty(item.Point_Of_Discussion))
+                                            {
+                                                <option value="" selected disabled>-- Select Point --</option>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.Point_Of_Discussion))
+                                            {
+                                                <option value="@item.Point_Of_Discussion" selected>@item.Point_Of_Discussion</option>
+                                            }
+                                            @foreach (var point in mdtPointOfDiscussion)
+                                            {
+                                                if (point.Point_Of_Discussion != item.Point_Of_Discussion)
+                                                {
+                                                    <option value="@point.Point_Of_Discussion">@point.Point_Of_Discussion</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Patient Rights</label>
+                                        <input type="text" class="form-control-plaintext" name="Patient_Rights"
+                                               value="@item.Right_Name" readonly title="@item.Right_Name" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Patient Rights Group</label>
+                                        <select class="form-select select2" name="Patient_Rights_Group">
+                                            @if (string.IsNullOrEmpty(item.Patient_Right_Group))
+                                            {
+                                                <option value="" selected disabled>-- Select Group --</option>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.Patient_Right_Group))
+                                            {
+                                                <option value="@item.Patient_Right_Group" selected>@item.Patient_Right_Group</option>
+                                            }
+                                            @foreach (var right in patientRights)
+                                            {
+                                                if (right.Right_Name != item.Patient_Right_Group)
+                                                {
+                                                    <option value="@right.Right_Name">@right.Right_Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">Attending Doctor</label>
+                                        <select class="form-select select2" name="DoctorList">
+                                            @if (string.IsNullOrEmpty(item.Doctor_Name))
+                                            {
+                                                <option value="" selected disabled>-- Select Doctor --</option>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.Doctor_Name))
+                                            {
+                                                <option value="@item.Doctor_Name" selected>@item.Doctor_Name</option>
+                                            }
+                                            @foreach (var doctor in mdtDoctorList)
+                                            {
+                                                if (doctor.Doctor_Name != item.Doctor_Name)
+                                                {
+                                                    <option value="@doctor.Doctor_Name">@doctor.Doctor_Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-semibold">MDT Group</label>
+                                        <select class="form-select select2" name="MDT_Group">
+                                            @if (string.IsNullOrEmpty(item.MDT_Group))
+                                            {
+                                                <option value="" selected disabled>-- Select Group --</option>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.MDT_Group))
+                                            {
+                                                <option value="@item.MDT_Group" selected>@item.MDT_Group</option>
+                                            }
+                                            @foreach (var group in mdtGroup)
+                                            {
+                                                if (group.MDTGroup_Name != item.MDT_Group)
+                                                {
+                                                    <option value="@group.MDTGroup_Name">@group.MDTGroup_Name</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-semibold">แพทย์/Specialty ที่ต้องการปรึกษา</label>
+                                        <input type="text" class="form-control" name="consult" value="@item.MDT_Consult" />
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-semibold">Review Image</label>
+                                        <input type="text" class="form-control" name="reviewimage" value="@item.MDT_Review_Image" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label fw-semibold">Appointment</label>
+                                        <input type="text" class="form-control" name="appointment" value="@item.MDT_Appointment" />
+                                    </div>
+                                </div>
+
                                 <div class="mb-3">
-                                    <label class="form-label">Diagnostics</label>
-                                    <input type="text" class="form-control" name="diagnostics" value="@item.diagnostic_name" />
+                                    <label class="form-label fw-semibold">Remarks Memo</label>
+                                    <textarea class="form-control" name="Remarks_Memo" rows="2" readonly>@item.Remarks_Memo</textarea>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Remarks Memo</label>
-                                    <textarea class="form-control" name="Remarks_Memo" rows="2">@item.Remarks_Memo</textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Patient Rights</label>
-                                    <select class="form-select" name="Patient_Rights">
-                                        @foreach (var right in patientRights)
-                                        {
-                                            <option value="@right.Right_Name" selected="@(item.Right_Code == right.Right_Code ? "selected" : null)">
-                                                @right.Right_Name
-                                            </option>
-                                        }
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Doctor</label>
-                                    <input type="text" class="form-control" name="Doctor_Name" value="@item.Doctor_Name" readonly />
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">MDT Group</label>
-                                    <select class="form-select" name="MDT_Group">
-                                        @foreach (var group in mdtGroup)
-                                        {
-                                            <option value="@group.MDTGroup_Name" selected="@(item.MDT_Group == group.MDTGroup_Name ? "selected" : null)">
-                                                @group.MDTGroup_Name
-                                            </option>
-                                        }
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">แพทย์/Specialty ที่ต้องการปรึกษา</label>
-                                    <input type="text" class="form-control" name="consult" value="@item.MDT_Consult" />
-                                </div>
-                                <div class="mb-3 d-flex align-items-center">
-                                    <label class="form-label me-2 mb-0">Review Image</label>
-                                    <input type="text" class="form-control me-3" name="reviewimage" value="@item.MDT_Review_Image" style="max-width: 440px;" />
-                                    <label class="form-label me-2 mb-0">Appointment</label>
-                                    <input type="text" class="form-control" name="appointment" value="@item.MDT_Appointment" style="max-width: 100px;" />
+
+                                <h6 class="border-bottom pb-2 mb-3 mt-4 text-primary">MDT Status</h6>
+                                <div class="d-flex gap-4">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="imagingstatus_@modalId"
+                                               name="imagingstatus" value="true" @(item.Imaging_Status ? "checked" : "") />
+                                        <label class="form-check-label fw-semibold" for="imagingstatus_@modalId">Imaging Status</label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="pathostatus_@modalId"
+                                               name="pathostatus" value="true" @(item.Patho_Status ? "checked" : "") />
+                                        <label class="form-check-label fw-semibold" for="pathostatus_@modalId">Pathology Status</label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="historystatus_@modalId"
+                                               name="historystatus" value="true" @(item.History_Status ? "checked" : "") />
+                                        <label class="form-check-label fw-semibold" for="historystatus_@modalId">History Status</label>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="modal-footer d-flex justify-content-between">
-                                <button type="button" class="btn btn-danger me-auto sendToNchBtn">Send to nCH</button>
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                <button type="button" class="btn btn-primary saveBtn">Save</button>
+
+                            <div class="modal-footer bg-light">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="bi bi-x-circle me-1"></i> Close
+                                </button>
+                                <button type="button" class="btn btn-primary saveBtn">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Confirm & Save Changes
+                                </button>
                             </div>
+
                         </form>
                     </div>
                 </div>
             </div>
-        }
-        <button type="button" id="submitToNavify" class="btn btn-danger">Submit To navify</button>
 
+            <div class="modal fade" id="labResultModal" tabindex="-1" aria-labelledby="labResultModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="labResultModalLabel">Lab Results</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="labResultModalBody">
+                            <!-- Lab results will be loaded here -->
+                            <div class="text-center">
+                                <span class="spinner-border" role="status" aria-hidden="true"></span>
+                                <span>Loading...</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer d-flex justify-content-between" id="labResultModalFooter">
+                            @* <button type="button" class="btn btn-danger me-auto sendToNchBtn">Send to nCH</button> *@
+                            @*  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button> *@
+                            <button type="button" class="btn btn-primary saveBtn">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="imagingModal" tabindex="-1" aria-labelledby="imagingModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="imagingModalLabel">Imaging</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="imagingModalBody">
+                            <!-- Lab results will be loaded here -->
+                            <div class="text-center">
+                                <span class="spinner-border" role="status" aria-hidden="true"></span>
+                                <span>Loading...</span>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="pathologyModal" tabindex="-1" aria-labelledby="pathologyModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="pathologyModalLabel">Pathology Result</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="pathologyModalBody">
+                            <!-- Lab results will be loaded here -->
+                            <div class="text-center">
+                                <span class="spinner-border" role="status" aria-hidden="true"></span>
+                                <span>Loading...</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer d-flex justify-content-between" id="pathologyModalFooter">
+                            <button type="button" class="btn btn-primary saveBtn">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="patientHistoryModal" tabindex="-1" aria-labelledby="patientHistoryModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="patientHistoryModalLabel">Patient History</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="patientHistoryModalBody">
+                            <!-- Lab results will be loaded here -->
+                            <div class="text-center">
+                                <span class="spinner-border" role="status" aria-hidden="true"></span>
+                                <span>Loading...</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer d-flex justify-content-between" id="patientHistoryModalFooter">
+                            <button type="button" class="btn btn-primary saveBtn">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="patientHistoryTempModal" tabindex="-1" aria-labelledby="patientHistoryTempModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="patientHistoryTempModalLabel">Temp Patient History</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="patientHistoryTempModalBody">
+                            <!-- Data will be loaded here -->
+                            <div class="text-center">
+                                <span class="spinner-border" role="status" aria-hidden="true"></span>
+                                <span>Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        <div class="d-flex justify-content-end mb-4 gap-2">
+            @* ลด gap จาก gap-3 เป็น gap-2 *@
+
+            @* 1. Primary Action: Submit (เปลี่ยนจาก btn-lg เป็น btn-sm) *@
+            <button type="button" id="submitToNavify" class="btn btn-danger btn-sm shadow-sm">
+                <i class="bi bi-cloud-upload-fill me-1"></i> Submit
+            </button>
+
+            @* 2. Secondary Actions: Download/Report (เปลี่ยนปุ่มทั้งหมดเป็น btn-sm) *@
+            <div class="btn-group shadow-sm" role="group" aria-label="MDT Report and Download Options">
+
+                @* ปุ่ม View Report *@
+                <a class="btn btn-primary btn-sm" href="@Url.Action("MDTReport", "PatientCRA", new { mdtDate = mdtDateSearch })" target="_blank" title="View MDT Report">
+                    <i class="bi bi-file-earmark-text me-1"></i> Report
+                </a>
+
+                @* ปุ่ม Download CSV *@
+                <button type="button" id="genCSV" class="btn btn-primary btn-sm" title="Download data as CSV file">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> CSV
+                </button>
+
+                @* Dropdown สำหรับ Download PDF *@
+                <div class="btn-group" role="group">
+                    <button id="btnGroupDrop1" type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        PDF
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="btnGroupDrop1">
+                        <li>
+                            <a class="dropdown-item" target="_blank" href="@Url.Action("MDTReportPdf", "PatientCRA", new { mdtDate = mdtDateSearch })">
+                                <i class="bi bi-file-pdf me-1"></i> Download Report PDF
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </div>
     </form>
 }
 <div id="messageAlert" class="alert alert-success alert-dismissible fade" role="alert" style="display: none;">
@@ -210,7 +667,154 @@ else
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 
+
+
 @section Scripts {
+
+    <script>
+        $(document).ready(function () {
+
+            // ฟังก์ชันสร้าง HTML ปุ่ม (ปรับให้รับค่า hn และ mdtDate)
+            function createUpdatedButtonHtml(isConfirmed, hn, mdtDate) {
+                // ... (โค้ดเดิม) ...
+                const buttonClass = isConfirmed ? "btn-success" : "btn-primary";
+                const title = isConfirmed ? "Click to Resend this item" : "Click to Submit this item only";
+                const iconAndText = isConfirmed
+                    ? '<i class="bi bi-check-circle-fill me-1"></i> Sent / Resend'
+                    : '<i class="bi bi-cloud-upload-fill me-1"></i> Send Now';
+
+                return `<button type="button"
+                                class="btn btn-sm ${buttonClass} fw-bold shadow-sm single-row-send-btn"
+                                data-hn="${hn}"
+                                data-mdt-date="${mdtDate}"
+                                title="${title}">
+                                ${iconAndText}
+                            </button>`;
+            }
+
+            // 🛑 FIX: ใช้ Event Delegation โดยผูก Event กับ document (หรือตาราง ID)
+            $(document).on('click', '.single-row-send-btn', function (e) {
+                e.preventDefault();
+
+                const button = $(this);
+                // 🛑 FIX: เก็บ HTML และ Class เดิมของปุ่มไว้ก่อนเข้าสถานะ Loading
+                const originalHtml = button.html();
+                const originalButtonClass = button.attr('class');
+
+                const hn = button.data('hn');
+                const mdtDate = button.data('mdt-date');
+
+                if (!hn || !mdtDate) {
+                    alert("Error: Missing patient data (HN or MDT Date) on the button.");
+                    return;
+                }
+
+                // ใช้ String(hn) เพื่อป้องกัน Data Type Mismatch ใน C#
+                const requestData = { SelectedPatients: [{ Hn: String(hn), MdtDate: mdtDate }] };
+
+                // UI Feedback (Loading state)
+                button.html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Sending...');
+                button.prop('disabled', true);
+
+                $.ajax({
+                    url: '@Url.Action("GenerateNavifyFile", "PatientCRA")',
+                    type: 'POST',
+                    data: JSON.stringify(requestData),
+                    contentType: 'application/json',
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.success) {
+                            alert(response.message);
+
+                            // 1. สร้าง HTML ของปุ่มใหม่
+                            const newButtonHtml = createUpdatedButtonHtml(true, hn, mdtDate);
+
+                            // 2. แทนที่ HTML ของปุ่มเดิมใน div ที่ครอบ
+                            button.parent().html(newButtonHtml);
+
+                        } else {
+                            alert("Error: " + response.message);
+                            // คืนค่าสถานะเดิมเมื่อเกิด Logic Error
+                            button.html(originalHtml);
+                            button.attr('class', originalButtonClass);
+                            button.prop('disabled', false);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert("An error occurred during submission: " + status + " " + error);
+                        // คืนค่าสถานะเดิมเมื่อเกิด Network Error
+                        button.html(originalHtml);
+                        button.attr('class', originalButtonClass);
+                        button.prop('disabled', false);
+                    }
+                });
+            });
+        });
+    </script>
+
+    <script>
+        $(document).ready(function () {
+            $('.saveConsult').click(function () {
+                var consultValue = $('#consult').val();
+                var mdtDate = '@(mdtDateSearch.ToString().Replace("'", "\\'"))';;
+                if (!consultValue) {
+                    alert('Please enter a doctor name.');
+                    return;
+                }
+                $.ajax({
+                    url: '@Url.Action("SaveConsult", "PatientCRA")',
+                    type: 'POST',
+                    data: {
+                        consult: consultValue,
+                        mdtDate: mdtDate,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            alert('Saved successfully.');
+                            $('#consult').val(consultValue);
+                        } else {
+                            alert('Error: ' + (response.message || 'Unknown error'));
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Error: ' + error);
+                    }
+                });
+            });
+        });
+    </script>
+
+
+
+
+    <script>
+     $(document).ready(function () {
+         $('#genCSV').click(function (e) {
+             e.preventDefault();
+             // Collect the current search/filter state if needed
+             var mdtDate = '@(mdtDateSearch.ToString().Replace("'", "\\'"))';;
+
+             // Option 1: Open report in a new tab (GET)
+             // window.open('@Url.Action("GenerateReport", "PatientCRA")' + '?mdtDate=' + encodeURIComponent(mdtDate), '_blank');
+
+             // Option 2: Download report via POST (for more complex filters)
+             var form = $('<form>', {
+                 method: 'POST',
+                 action: '@Url.Action("GenerateReport", "PatientCRA")',
+                 target: '_blank'
+             });
+             form.append($('<input>', { type: 'hidden', name: 'mdtDate', value: mdtDate }));
+             form.append('@Html.AntiForgeryToken()');
+             $('body').append(form);
+             form.submit();
+             form.remove();
+         });
+     });
+ </script>
+
+
+
     <script>
         $(document).ready(function () {
             // Disable default form submissions
@@ -376,4 +980,437 @@ else
             });
         }
     </script>
+
+    <script>
+        function GetTbPatientLabData(hn) {
+            $('#labResultModalBody').html('<div class="text-center"><span class="spinner-border" role="status" aria-hidden="true"></span> <span>Loading...</span></div>');
+            $.ajax({
+                url: '@Url.Action("GetTbPatientLabDataView", "PatientCRA")',
+                type: 'GET',
+                data: { hn: hn },
+                success: function (data) {
+                    // If you return HTML from the controller, just inject it:
+                    $('#labResultModalBody').html(data);
+
+                    // If you return JSON, build the table here.
+                    // Example for JSON:
+                    // var html = '<table class="table table-bordered"><thead><tr><th>Lab Code</th><th>Lab Name</th><th>Result</th><th>Date</th></tr></thead><tbody>';
+                    // $.each(data, function(i, lab) {
+                    //     html += '<tr><td>' + lab.lab_Code + '</td><td>' + lab.lab_Name_English + '</td><td>' + lab.result_Value + '</td><td>' + new Date(lab.result_Datetime).toLocaleString() + '</td></tr>';
+                    // });
+                    // html += '</tbody></table>';
+                    // $('#labResultModalBody').html(html);
+                },
+                error: function (xhr, status, error) {
+                    $('#labResultModalBody').html('<div class="alert alert-danger">Error loading lab data: ' + error + '</div>');
+                }
+            });
+        }
+    </script>
+     <script>
+        function GetTbPatientImagingData(hn) {
+            $('#imagingModalBody').html('<div class="text-center"><span class="spinner-border" role="status" aria-hidden="true"></span> <span>Loading...</span></div>');
+            $.ajax({
+                url: '@Url.Action("GetTbPatientImagingDataView", "PatientCRA")',
+                type: 'GET',
+                data: { hn: hn },
+                success: function (data) {
+                    // If you return HTML from the controller, just inject it:
+                    $('#imagingModalBody').html(data);
+
+                    // If you return JSON, build the table here.
+                    // Example for JSON:
+                    // var html = '<table class="table table-bordered"><thead><tr><th>Lab Code</th><th>Lab Name</th><th>Result</th><th>Date</th></tr></thead><tbody>';
+                    // $.each(data, function(i, lab) {
+                    //     html += '<tr><td>' + lab.lab_Code + '</td><td>' + lab.lab_Name_English + '</td><td>' + lab.result_Value + '</td><td>' + new Date(lab.result_Datetime).toLocaleString() + '</td></tr>';
+                    // });
+                    // html += '</tbody></table>';
+                    // $('#labResultModalBody').html(html);
+                },
+                error: function (xhr, status, error) {
+                    $('#imagingModalBody').html('<div class="alert alert-danger">Error loading lab data: ' + error + '</div>');
+                }
+            });
+        }
+    </script>
+    <script>
+        function GetTbPatientPathologyData(hn) {
+            $('#pathologyModalBody').html('<div class="text-center"><span class="spinner-border" role="status" aria-hidden="true"></span> <span>Loading...</span></div>');
+            $.ajax({
+                url: '@Url.Action("GetTbPatientPathologyDataView", "PatientCRA")',
+                type: 'GET',
+                data: { hn: hn },
+                success: function (data) {
+                    // If you return HTML from the controller, just inject it:
+                    $('#pathologyModalBody').html(data);
+
+                    // If you return JSON, build the table here.
+                    // Example for JSON:
+                    // var html = '<table class="table table-bordered"><thead><tr><th>Lab Code</th><th>Lab Name</th><th>Result</th><th>Date</th></tr></thead><tbody>';
+                    // $.each(data, function(i, lab) {
+                    //     html += '<tr><td>' + lab.lab_Code + '</td><td>' + lab.lab_Name_English + '</td><td>' + lab.result_Value + '</td><td>' + new Date(lab.result_Datetime).toLocaleString() + '</td></tr>';
+                    // });
+                    // html += '</tbody></table>';
+                    // $('#labResultModalBody').html(html);
+                },
+                error: function (xhr, status, error) {
+                    $('#pathologyModalBody').html('<div class="alert alert-danger">Error loading lab data: ' + error + '</div>');
+                }
+            });
+        }
+    </script>
+    <script>
+                function GetTbPatientHistoryData(hn, mdtDate) {
+            var mdtName = "Breast";
+            $.ajax({
+                url: '@Url.Action("CheckTempPatientHistory", "PatientCRA")',
+                type: 'GET',
+                data: { hn: hn, mdtDate: mdtDate, mdtName: mdtName },
+                success: function (result) {
+                    if (result.exists) {
+                        // Show only the temp modal
+                        $.ajax({
+                            url: '@Url.Action("GetTempPatientHistory", "PatientCRA")',
+                            type: 'GET',
+                            data: { hn: hn, mdtDate: mdtDate, mdtName: mdtName },
+                            success: function (html) {
+                                $('#patientHistoryTempModalBody').html(html);
+                                var modalEl = document.getElementById('patientHistoryTempModal');
+                                var modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: false });
+                                modal.show();
+                            }
+                        });
+                    } else {
+                        // Show the original modal only if no temp data
+                        var modalEl = document.getElementById('patientHistoryModal');
+                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: false });
+                        modal.show();
+                        // Optionally, load the normal history as before
+                        $.ajax({
+                            url: '@Url.Action("GetTbPatientHistoryDataView", "PatientCRA")',
+                            type: 'GET',
+                            data: { hn: hn, appointDate: mdtDate },
+                            success: function (data) {
+                                $('#patientHistoryModalBody').html(data);
+                            },
+                            error: function (xhr, status, error) {
+                                $('#patientHistoryModalBody').html('<div class="alert alert-danger">Error loading data: ' + error + '</div>');
+                            }
+                        });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    alert('Error checking temp patient history: ' + error);
+                }
+            });
+        }
+
+
+    </script>
+    <script>
+                function GetPreparePatientHistoryData(hn, mdtDate) {
+            var mdtName = "Breast";
+            $.ajax({
+                url: '@Url.Action("CheckTempPatientHistory", "PatientCRA")',
+                type: 'GET',
+                data: { hn: hn, mdtDate: mdtDate, mdtName: mdtName },
+                success: function (result) {
+                    if (result.exists) {
+                        // Show only the temp modal
+                    } else {
+                        
+                    }
+                    // Show the original modal only if no temp data
+                        var modalEl = document.getElementById('patientHistoryTempModal');
+                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl, { backdrop: 'static', keyboard: false });
+                        modal.show();
+                        // Optionally, load the normal history as before
+                        $.ajax({
+                            url: '@Url.Action("GetTempPatientHistory", "PatientCRA")',
+                            type: 'GET',
+                            data: { hn: hn, appointDate: mdtDate, mdtName },
+                            success: function (data) {
+                                $('#patientHistoryTempModalBody').html(data);
+                            },
+                            error: function (xhr, status, error) {
+                                $('#patientHistoryTempModalBody').html('<div class="alert alert-danger">Error loading data: ' + error + '</div>');
+                            }
+                        });
+                },
+                error: function (xhr, status, error) {
+                    alert('Error checking temp patient history: ' + error);
+                }
+            });
+        }
+
+
+    </script>
+    <script>
+        // Save button handler for Temp Patient History
+        $(document).on('click', '#saveTempPatientHistoryBtn', function () {
+            var hn = $('#tempHistoryHn').val();
+            var mdtDate = $('#tempHistoryMdtDate').val();
+            var mdtName = $('#tempHistoryMdtName').val();
+            var patient_history = $('#tempPatientHistoryTextarea').val();
+
+            $.ajax({
+                url: '@Url.Action("UpdateTempPatientHistory", "PatientCRA")',
+                type: 'POST',
+                data: {
+                    hn: hn,
+                    mdtDate: mdtDate,
+                    mdtName: mdtName,
+                    patient_history: patient_history
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                        // Optionally close modal or refresh data
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
+        });
+    </script>
+    <script>
+        // Reset button handler for Temp Patient History
+        $(document).on('click', '#resetTempPatientHistoryBtn', function () {
+            var hn = $('#tempHistoryHn').val();
+            var mdtDate = $('#tempHistoryMdtDate').val();
+            var mdtName = $('#tempHistoryMdtName').val();
+
+            $.ajax({
+                url: '@Url.Action("DeleteTempPatientHistory", "PatientCRA")',
+                type: 'POST',
+                data: {
+                    hn: hn,
+                    mdtDate: mdtDate,
+                    mdtName: mdtName,
+                },
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                        // Optionally close modal or refresh data
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
+        });
+    </script>
+
+<script>
+    $(document).ready(function () {
+        // For every modal, initialize select2 for selects inside it
+        $('.modal').each(function () {
+            var $modal = $(this);
+            $modal.find('.select2').select2({
+                width: '100%',
+                dropdownParent: $modal
+            });
+        });
+    });
+</script>
+    <script>
+        function OpenPatientHistoryTab(hn, appointDate) {
+            // สร้าง URL ไปที่ action ที่แสดง view แบบเต็มหน้า
+            var url = '@Url.Action("GetTbPatientHistoryDataView", "PatientCRA")'
+                    + '?hn=' + encodeURIComponent(hn)
+                    + '&appointDate=' + encodeURIComponent(appointDate);
+
+            window.open(url, '_blank');
+        }
+    </script>
+    <script>
+             function OpenPatientHistoryPrepareTab(hn, appointDate) {
+            // แนะนำให้กำหนด mdtName ที่นี่ หรือรับเป็น parameter ที่สาม
+            var mdtName = "Breast";
+
+            // ถ้า appointDate ที่ส่งเข้ามาเป็นวัตถุ Date หรือรูปแบบที่ URL Encoding ได้ถูกต้องอยู่แล้ว
+            // สามารถใช้ได้เลย แต่ถ้าเป็น string ควรตรวจสอบรูปแบบให้เป็น "YYYY-MM-DD" เพื่อให้ C# แปลงเป็น DateTime ได้ง่ายที่สุด
+            // ตัวอย่าง: ถ้า appointDate คือ '2025-10-07'
+
+            // สร้าง URL:
+            // - 'hn' ตรงกับ string hn ใน C#
+            // - 'appointDate' ตรงกับ DateTime appointDate ใน C#
+            // - 'mdtName' ตรงกับ string mdtName ใน C#
+            var url = '@Url.Action("GetTempPatientHistory", "PatientCRA")'
+                    + '?hn=' + encodeURIComponent(hn)
+                    + '&appointDate=' + encodeURIComponent(appointDate)
+                    + '&mdtName=' + encodeURIComponent(mdtName); // เพิ่ม mdtName
+
+            window.open(url, '_blank');
+        }
+
+        function OpenPatientImagingTab(hn) {
+            // 1. กำหนด URL ปลายทางสำหรับข้อมูล Imaging
+            // คุณจะต้องแทนที่ '/Imaging/View' ด้วย URL ที่ถูกต้องของหน้า Imaging ของคุณ
+            var url = '@Url.Action("GetTbPatientImagingDataView", "PatientCRA")'
+                    + '?hn=' + encodeURIComponent(hn);
+
+            // 2. เปิดแท็บใหม่
+            // '_blank' คือการบอกให้เปิดในหน้าต่าง/แท็บใหม่
+            window.open(url, '_blank');    
+        }
+
+        function OpenPatientHistologyTab(hn) {
+            // 1. กำหนด URL ปลายทางสำหรับข้อมูล Imaging
+            // คุณจะต้องแทนที่ '/Imaging/View' ด้วย URL ที่ถูกต้องของหน้า Imaging ของคุณ
+            var url = '@Url.Action("GetTbPatientPathologyDataView", "PatientCRA")'
+                    + '?hn=' + encodeURIComponent(hn);
+
+            // 2. เปิดแท็บใหม่
+            // '_blank' คือการบอกให้เปิดในหน้าต่าง/แท็บใหม่
+            window.open(url, '_blank');
+        }
+
+        function OpenPatientLabTab(hn) {
+            // 1. กำหนด URL ปลายทางสำหรับข้อมูล Imaging
+            // คุณจะต้องแทนที่ '/Imaging/View' ด้วย URL ที่ถูกต้องของหน้า Imaging ของคุณ
+            var url = '@Url.Action("GetTbPatientLabDataView", "PatientCRA")'
+                    + '?hn=' + encodeURIComponent(hn);
+
+            // 2. เปิดแท็บใหม่
+            // '_blank' คือการบอกให้เปิดในหน้าต่าง/แท็บใหม่
+            window.open(url, '_blank');
+        }
+    </script>
+
+    <script>
+        // ----------------------------------------------------
+        // 1. ฟังก์ชันควบคุมสถานะปุ่ม Batch Action
+        // ----------------------------------------------------
+        function updateBatchButtonState() {
+            var $rowCheckboxes = $('.row-checkbox');
+            var $batchButton = $('#submitToNavify'); // อ้างอิงถึงปุ่ม Send Selected Items
+
+            var isAnyCheckboxChecked = $rowCheckboxes.is(':checked');
+
+            // เปิด/ปิดปุ่มตามสถานะของ Checkbox
+            $batchButton.prop('disabled', !isAnyCheckboxChecked);
+        }
+
+        // ----------------------------------------------------
+        // 2. Document Ready (รวม Logic ทั้งหมดเข้าด้วยกัน)
+        // ----------------------------------------------------
+        $(document).ready(function () {
+
+            // A. Select All checkbox functionality
+            $('#selectAll').change(function() {
+                var isChecked = $(this).prop('checked');
+                $('.row-checkbox').prop('checked', isChecked);
+
+                // เรียกใช้ฟังก์ชันเพื่ออัปเดตสถานะปุ่มหลังการเลือก/ยกเลิกทั้งหมด
+                updateBatchButtonState();
+            });
+
+            // B. Update Select All checkbox state and Batch Button state
+            //    เมื่อ individual checkboxes เปลี่ยน
+            $('.row-checkbox').change(function() {
+                // อัปเดต Select All
+                var allChecked = $('.row-checkbox:not(:checked)').length === 0;
+                $('#selectAll').prop('checked', allChecked);
+
+                // อัปเดตสถานะปุ่ม Batch Action
+                updateBatchButtonState();
+            });
+
+            // C. Logic การส่งข้อมูล (submitToNavify)
+            $('#submitToNavify').click(function(e) {
+                e.preventDefault();
+
+                var $button = $(this);
+                var originalHtml = $button.html();
+
+                var selectedHNs = [];
+                $('.row-checkbox:checked').each(function() {
+                    selectedHNs.push({
+                        hn: $(this).val(),
+                        mdtDate: $(this).data('mdt-date')
+                    });
+                });
+
+                if (selectedHNs.length === 0) {
+                    showMessage('Please select at least one patient.', 'danger');
+                    return;
+                }
+
+                // ใส่ Confirmation Popup ก่อนส่ง
+                if (!confirm('ยืนยันที่จะส่งข้อมูลผู้ป่วยจำนวน ' + selectedHNs.length + ' รายการนี้เข้าสู่ Navify ใช่หรือไม่?')) {
+                     return;
+                }
+
+                // แสดงสถานะ Loading และปิดใช้งานปุ่ม
+                $button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Sending...');
+
+                $.ajax({
+                    url: '@Url.Action("GenerateNavifyFile", "PatientCRA")',
+                    type: 'POST',
+                    data: JSON.stringify({ selectedPatients: selectedHNs }),
+                    contentType: 'application/json',
+
+                    success: function(response) {
+                        if (response.success) {
+                            showMessage('Send to navify successfully.', 'success');
+
+                            // คืนสถานะปุ่ม
+                            $button.html(originalHtml);
+
+                            // อัปเดตตาราง
+                            var mdtDateInput = $('input[name="mdtDateInputSelector"]').val(); // **ต้องดึงค่า MDT Date ปัจจุบันจาก Input/Form ของหน้าหลัก**
+                            var dateToRefresh = response.mdtDate || mdtDateInput;
+
+                            if (dateToRefresh) {
+                                refreshAppointments(dateToRefresh);
+                            } else {
+                                // ถ้าไม่รู้ MDT Date ที่จะรีเฟรช ให้รีโหลดหน้าทั้งหมด
+                                // location.reload();
+                            }
+                        } else {
+                            showMessage('Error: ' + response.message, 'danger');
+                            $button.prop('disabled', false).html(originalHtml); // คืนสถานะปุ่ม
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        showMessage('Error generating file: ' + error, 'danger');
+                        $button.prop('disabled', false).html(originalHtml); // คืนสถานะปุ่ม
+                    }
+                });
+            });
+
+            // D. ฟังก์ชัน showMessage (ใช้โค้ดเดิมของคุณ)
+            function showMessage(message, type) {
+                $('#messageAlert')
+                    .removeClass('alert-success alert-danger')
+                    .addClass('alert-' + type)
+                    .addClass('show')
+                    .show();
+                $('#alertMessage').text(message);
+
+                setTimeout(function() {
+                    $('#messageAlert').fadeOut(function() {
+                        $(this).removeClass('show');
+                    });
+                }, 5000);
+            }
+
+            // E. เรียกใช้ครั้งแรกเมื่อโหลดหน้า เพื่อตั้งสถานะปุ่มให้ถูกต้อง
+            updateBatchButtonState();
+        });
+
+
+        // ----------------------------------------------------
+        // 3. ฟังก์ชัน refreshAppointments (ควรอยู่นอก document.ready เพื่อให้เข้าถึงได้ง่าย)
+        // ----------------------------------------------------
+        function refreshAppointments(mdtDate) {
+            // ... (โค้ด refreshAppointments เดิมของคุณ) ...
+            // Note: Make sure to clear all checkboxes and update button state after table refresh
+            // e.g., after tableBody.append(row) loop:
+            // updateBatchButtonState();
+        }
+    </script>
+    <!-- Before </body> -->
+    <script src="~/lib/jquery/jquery-3.6.0.min.js"></script>
+    <script src="~/lib/select2/select2.min.js"></script>
 }
