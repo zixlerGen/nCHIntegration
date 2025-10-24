@@ -430,7 +430,7 @@ namespace nCHIntegration.Controllers
                     CRA_DIP_FFMessage fFMessage = new CRA_DIP_FFMessage(item);
                     string FFMessageFormat = fFMessage.CRA_FF_PatientDemographic();
                     string fileName = $"{DateTime.Now:yyyyMMdd_HHmmssfff}_{item.HN}_CLB_flatfile.csv";
-                    HL7Message resultFF = WriteDataToFlatFile(FFMessageFormat, item.HN, "PatientDemographic", fileName);
+                    HL7Message resultFF = WriteDataToFlatFile(FFMessageFormat, item.HN, "PatientDemographic", fileName, true);
 
                     ////Appointment
                     //string appointment = fFMessage.CRA_FF_Appointment("Lung", "consult Med Onco", "consult oncomed neoadjuvant therapy (พญ.อัจฉรา)", "กชพร", "นามสกุล", "394592007", "Clinical oncology");
@@ -438,12 +438,12 @@ namespace nCHIntegration.Controllers
                     //resultFF = WriteDataToFlatFile(appointment, item.HN, "appointment", fileName);
 
                     //Appointment Comment
-                    string doctorName = item.appoint_by_doctor_name;
+                    string doctorName = item.Doctor_Name;
                     var nameParts = doctorName.Split(" ", StringSplitOptions.RemoveEmptyEntries);
                     string appointmentComment = fFMessage.CRA_FF_AppointmentComments(item.MDT_Meeting_Name, item.Point_Of_Discussion, item.MDT_Consult, nameParts[0],
                         nameParts[1], "394592007", "Clinical oncology", item.MDT_Consult, item.MDT_Consult);
                     fileName = $"{DateTime.Now:yyyyMMdd_HHmmssfff}_17_{item.HN}_CLB_flatfile_appointment.csv";
-                    resultFF = WriteDataToFlatFile(appointmentComment, item.HN, "appointmentComment", fileName);
+                    resultFF = WriteDataToFlatFile(appointmentComment, item.HN, "appointmentComment", fileName, false);
 
                     //fileName = $"{item.HN}_CLB_{DateTime.Now:yyyyMMdd_HHmmss}_flatfile_appointment.csv";
                     //resultFF = WriteDataToFlatFile(appointmentComment, item.HN, "appointmentComment", fileName);
@@ -451,12 +451,12 @@ namespace nCHIntegration.Controllers
                     //Diagnostics
                     string diagnosticcondition = fFMessage.CRA_FF_Condition(item.Diagnostic_Name, DateTime.Now.ToString("yyyy-MM-dd"), DateTime.Now.ToString("yyyy-MM-dd"));
                     fileName = $"{DateTime.Now:yyyyMMdd_HHmmssfff}_{item.HN}_CLB_flatfile_condition.csv";
-                    resultFF = WriteDataToFlatFile(diagnosticcondition, item.HN, "diagnosticCondition", fileName);
+                    resultFF = WriteDataToFlatFile(diagnosticcondition, item.HN, "diagnosticCondition", fileName, false);
 
                     //Patient Rights
                     string documentRefernce = fFMessage.CRA_FF_DocumentReference();
                     fileName = $"{DateTime.Now:yyyyMMdd_HHmmssfff}_{item.HN}_CLB_flatfile_documentreference.csv";
-                    resultFF = WriteDataToFlatFile(documentRefernce, item.HN, "documentreference", fileName);
+                    resultFF = WriteDataToFlatFile(documentRefernce, item.HN, "documentreference", fileName, false);
 
                     //Patho Report
                     var selectedPathoResult = _dbContext.CRA_Temp_Patient_Pathology
@@ -473,7 +473,7 @@ namespace nCHIntegration.Controllers
                             itemPatho.lab_name_english
                         );
                         fileName = $"{DateTime.Now:yyyyMMdd_HHmmssfff}_{pathoFileNo}_{item.HN}_CLB_pat_flatfile_diagnosticreport.csv";
-                        resultFF = WriteDataToFlatFile(FFPathoReport, item.HN, "pathologyreport", fileName);
+                        resultFF = WriteDataToFlatFile(FFPathoReport, item.HN, "pathologyreport", fileName, false);
                         pathoFileNo++;
                     }
 
@@ -492,7 +492,7 @@ namespace nCHIntegration.Controllers
                             itemXray.xray_name_english
                         );
                         fileName = $"{DateTime.Now:yyyyMMdd_HHmmssfff}_{xrayFileNo}_{item.HN}_CLB_rad_flatfile_diagnosticreport.csv";
-                        resultFF = WriteDataToFlatFile(FFRADReport, item.HN, "radiologyreport", fileName);
+                        resultFF = WriteDataToFlatFile(FFRADReport, item.HN, "radiologyreport", fileName, false);
                         xrayFileNo++;
                     }
 
@@ -519,7 +519,7 @@ namespace nCHIntegration.Controllers
                             itemLab.result_datetime.HasValue ? itemLab.result_datetime.Value.ToString("yyyy-MM-dd") : ""
                         );
                         fileName = $"{DateTime.Now:yyyyMMdd_HHmmssfff}_{labFileNo}_{item.HN}_CLB_labbio_flatfile_observation.csv";
-                        resultFF = WriteDataToFlatFile(FFLabBio, item.HN, "LabBio", fileName);
+                        resultFF = WriteDataToFlatFile(FFLabBio, item.HN, "LabBio", fileName, false);
                         labFileNo++;
                     }
 
@@ -535,7 +535,7 @@ namespace nCHIntegration.Controllers
                             "System"
                         );
                         fileName = $"{DateTime.Now:yyyyMMdd_HHmmssfff}_{item.HN}_CLB_HistoryOfIllness_flatfile_documentreference.csv";
-                        resultFF = WriteDataToFlatFile(FFPatientHistory, item.HN, "PatientHistory", fileName);
+                        resultFF = WriteDataToFlatFile(FFPatientHistory, item.HN, "PatientHistory", fileName, false);
                     }
 
                     ////Additional ID
@@ -543,7 +543,7 @@ namespace nCHIntegration.Controllers
                     {
                         string FFAdditionalID = fFMessage.CRA_FF_PatientAddIdentified(item.CTB_No);
                         fileName = $"{DateTime.Now:yyyyMMdd_HHmmssfff}_CTB_{item.HN}_CLB_patient_flatfile.csv";
-                        resultFF = WriteDataToFlatFile(FFAdditionalID, item.HN, "AdditionalID", fileName);
+                        resultFF = WriteDataToFlatFile(FFAdditionalID, item.HN, "AdditionalID", fileName, false);
                     }
 
                     // Update the status
@@ -578,7 +578,7 @@ namespace nCHIntegration.Controllers
                 return Json(new { success = false, message = ex.Message });
             }
         }
-        private HL7Message WriteDataToFlatFile(string hl7MessageContent, string hn, string messaeName, string messageType)
+        private HL7Message WriteDataToFlatFile(string hl7MessageContent, string hn, string messaeName, string messageType, bool isMain)
         {
             HL7Message hl7 = new HL7Message();
             try
@@ -590,12 +590,15 @@ namespace nCHIntegration.Controllers
                 hl7.SFTPSendOutTime = DateTime.Now.ToString("yyyyMMddHHmmssfff");
                 hl7.SFTPSendOutStatus = "Success";
 
-                // Write HL7 messages to a text file
-                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "FF"));
-                //string fileName = $"{messageType}.csv";
-                hl7.FilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "FF", messageType);
+                Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "FF\\Details"));
+                hl7.FilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "FF\\Details", messageType);
 
-                // Write the data to the file (overwrites if the file exists)
+                if (isMain)
+                {
+                    Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "FF\\Main"));
+                    hl7.FilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "FF\\Main", messageType);
+                }
+
                 System.IO.File.WriteAllText(hl7.FilePath, hl7MessageContent);
                 return hl7;
             }

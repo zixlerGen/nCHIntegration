@@ -204,8 +204,12 @@ namespace SftpServiceNCH
 
         private async void SftpUpload()
         {
-            // var filePaths = txtLocalFilePath.Text.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-            var filePaths = GetAllFilesInDirectory(_sftpSettings.sftpLocalPath); // Get all file names from the local path
+            // check if there are files in Main to upload
+            var filePaths = GetAllFilesInDirectory(_sftpSettings.sftpLocalPath + "\\Main"); // Get all file names from the local path
+            
+            if(filePaths.Count == 0)
+                filePaths = GetAllFilesInDirectory(_sftpSettings.sftpLocalPath + "\\Details");
+
             if (filePaths.Count == 0)
             {
                 Log($"No file upload...");

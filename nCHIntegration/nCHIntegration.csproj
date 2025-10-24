@@ -26,8 +26,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="wwwroot\FF\Main\" />
+    <Folder Include="wwwroot\FF\Details\" />
     <Folder Include="wwwroot\HL7\" />
-    <Folder Include="wwwroot\FF\" />
     <Folder Include="wwwroot\PDF\" />
   </ItemGroup>
 

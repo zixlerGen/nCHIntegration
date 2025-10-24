@@ -31,6 +31,11 @@
         height: auto; /* Maintains the aspect ratio */
         width: 100px; /* Adjust the width as needed */
     }
+
+    .patient-name-large {
+        font-size: 1.0rem; /* adjust to taste: 1.2rem, 1.6rem, etc. */
+        font-weight: 500; /* keeps fw-bold effect */
+    }
 </style>
 
 <!-- In the <head> section -->
@@ -194,9 +199,10 @@ else
 
                             @* 3. Patient Info (Doctor, HN, Name, Age) *@
                             <td class="align-top">
-                                <div class="fw-semibold text-primary" title="Doctor">@item.appoint_by_doctor_name</div>
                                 <div class="fw-bold">HN: @item.HN</div>
-                                <div>@item.Initial_Name @item.First_Name @item.Last_Name (@age ปี)</div>
+                                @* <div class="fw-bold text-primary">@item.Initial_Name @item.First_Name @item.Last_Name (@age ปี)</div> *@
+                                <div class="fw-bold text-primary patient-name-large">@item.Initial_Name @item.First_Name @item.Last_Name (@age ปี)</div>
+                                <div class="fw-semibold" title="Doctor">@item.Doctor_Name</div>
                             </td>
 
                             @* 4. MDT Details (Group, CTB, Visit, Right) *@
